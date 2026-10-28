@@ -590,12 +590,13 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&LB.el)close
 /*arcade:start*/
 var ARC_W=320,ARC_H=130,ARC_G=112,ARC_CW=8.4,ARC_LH=13,ARC_PX=26;
 var ARC_SPR={
-  rock:{rows:['/^\\','/__\\'],w:4,h:2},
+  sign:{rows:[' /!\\ ','/_W_\\'],w:5,h:2},
+  iv:{rows:['(+)',' |\\','_|_'],w:3,h:3},
   person:{rows:[' o ','/|\\','/ \\'],w:3,h:3},
   cart:{rows:['[==o==]','  o  o '],w:7,h:2}
 };
 function arcPlayerRows(frame){return ['|   ','|___',frame?'(+)o':'(x)o'];}
-function arcNew(rnd){rnd=rnd||Math.random;return {y:0,vy:0,speed:190,dist:0,obs:[],gap:240,over:false,started:false,t:0,bat:rnd()<1/25?rnd()*10:-1};}
+function arcNew(rnd,always){rnd=rnd||Math.random;return {y:0,vy:0,speed:190,dist:0,obs:[],gap:240,over:false,started:false,t:0,bat:(always||rnd()<1/10)?rnd()*10:-1};}
 function arcJump(G){if(G.y<=0.5&&!G.over){G.vy=430;G.started=true;}}
 function arcScore(G){return Math.floor(G.dist/12);}
 function arcStep(G,dt,rnd){
@@ -608,10 +609,9 @@ function arcStep(G,dt,rnd){
   G.obs=G.obs.filter(function(o){return o.x+o.w*ARC_CW>-10;});
   G.gap-=G.speed*dt;
   if(G.gap<=0){
-    var keys=['rock','rock','person','cart'],k=keys[Math.floor(rnd()*keys.length)],sp=ARC_SPR[k];
+    var keys=['sign','sign','iv','person','cart'],k=keys[Math.floor(rnd()*keys.length)],sp=ARC_SPR[k];
     var x=ARC_W+10,lastw=sp.w*ARC_CW;
     G.obs.push({k:k,x:x,w:sp.w*ARC_CW,h:sp.h*ARC_LH});
-    if(rnd()<0.08+0.22*f){var k2=rnd()<0.6?'rock':'person',s2=ARC_SPR[k2];G.obs.push({k:k2,x:x+lastw+12,w:s2.w*ARC_CW,h:s2.h*ARC_LH});lastw+=12+s2.w*ARC_CW;}
     var air=0.655*G.speed;
     G.gap=lastw+air*((1.5-0.35*f)+rnd()*(1.2-0.4*f));
   }
@@ -631,7 +631,7 @@ var ARC_BG=[
   ['  --+--  ','=(___)>>=','[__ H __]'],
   ['   _[+]_  ','  |_ _ _| ','  |HOSPITAL|','  |_|__|__|']
 ];
-var ARC={el:null,cv:null,cx:null,G:arcNew(),running:false,raf:0,last:0,hi:Number(sget('brt.hi'))||0};
+var ARC={el:null,cv:null,cx:null,G:arcNew(null,false),running:false,raf:0,last:0,hi:Number(sget('brt.hi'))||0};
 function arcDraw(){
   var cx=ARC.cx,G=ARC.G;if(!cx)return;
   cx.clearRect(0,0,ARC_W,ARC_H);
@@ -664,7 +664,7 @@ function arcDraw(){
   var fr=Math.floor(G.t*9)%2;
   sprite(arcPlayerRows(fr),ARC_PX,ARC_G-G.y,G.over?'#ff8a5c':'#fff1e8');
   // obstacles
-  G.obs.forEach(function(o){sprite(ARC_SPR[o.k].rows,o.x,ARC_G,o.k==='person'?'#9bb0ff':(o.k==='cart'?'#ffb08a':'#8d99b8'));});
+  G.obs.forEach(function(o){sprite(ARC_SPR[o.k].rows,o.x,ARC_G,o.k==='person'?'#9bb0ff':(o.k==='cart'?'#ffb08a':(o.k==='sign'?'#e9b44c':'#8fd0c8')));});
   // hud
   cx.fillStyle='#8d99b8';cx.textAlign='right';
   cx.fillText('HI '+String(ARC.hi).padStart(5,'0')+'  '+String(arcScore(G)).padStart(5,'0'),ARC_W-8,6);
@@ -684,9 +684,10 @@ function arcLoop(now){
 }
 function arcTap(){
   var G=ARC.G;
-  if(G.over){if(performance.now()-(ARC.overAt||0)>350){ARC.G=arcNew();arcJump(ARC.G);}return;}
+  if(G.over){if(performance.now()-(ARC.overAt||0)>350){ARC.G=arcNew(null,arcFar());arcJump(ARC.G);}return;}
   arcJump(G);
 }
+function arcFar(){return !!(P&&P.name&&String(P.name).toLowerCase()==='farticus');}
 function arcade(){
   if(!ARC.el){
     var dpr=Math.min(2,window.devicePixelRatio||1);
@@ -696,7 +697,7 @@ function arcade(){
     var jb=h('button',{class:'btn-main arc-j',type:'button'},'JUMP');
     jb.addEventListener('pointerdown',function(e){e.preventDefault();arcTap();});
     ARC.jb=jb;
-    ARC.el=h('div',{class:'arcade'},h('div',{class:'arc-t'},'Play this while you wait'),ARC.cv,jb,h('div',{class:'arc-s'},'Dodge rocks, people and stretchers. Your wheelchair is on its own.'));
+    ARC.el=h('div',{class:'arcade'},h('div',{class:'arc-t'},'Play this while you wait'),ARC.cv,jb,h('div',{class:'arc-s'},'Dodge wet floor signs, IV poles, people and stretchers. Your wheelchair is on its own.'));
     document.addEventListener('keydown',function(e){
       if(!ARC.el.isConnected)return;
       var t=e.target&&e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||(t==='BUTTON'&&e.target!==ARC.jb))return;
@@ -704,6 +705,7 @@ function arcade(){
     });
     arcDraw();
   }
+  if(!ARC.G.started&&!ARC.G.over)ARC.G=arcNew(null,arcFar());
   if(!ARC.running&&ARC.cx){ARC.running=true;ARC.last=performance.now();ARC.raf=requestAnimationFrame(arcLoop);}
   return ARC.el;
 }
