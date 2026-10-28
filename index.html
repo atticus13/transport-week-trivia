@@ -232,6 +232,19 @@ input:focus{border-color:var(--c);outline:none}
 .arc-t{font:700 .72rem/1 var(--ui);letter-spacing:.2em;text-transform:uppercase;color:var(--c);margin-bottom:8px}
 .arcade canvas{display:block;width:100%;aspect-ratio:320/130;border-radius:8px;background:#05081a;touch-action:manipulation;cursor:pointer}
 .arc-j{display:block;width:100%;margin-top:10px;padding:14px;font-size:1.1rem;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.lbbar{margin-top:22px;text-align:center}
+.lbbar .link-btn{font-size:.85rem}
+.lb-tabs{display:flex;gap:8px;margin-bottom:14px}
+.lb-tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font:700 .8rem var(--ui);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.lb-tabs button.on{color:#fff;border-color:var(--c);background:rgba(250,70,22,.14)}
+.lb-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
+.lb-row .rk{font-size:20px;min-width:30px}
+.lb-row .nm{flex:1}
+.lb-row.me{background:rgba(47,79,224,.16);border-radius:8px;padding-inline:8px}
+.lb-row .pt{font-size:20px}
+.lb-x{padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font:700 .75rem var(--ui);cursor:pointer}
+.lb-x.armed{border-color:#ff6b6b;color:#ff9a9a}
+.lb-note{margin:12px 0 0;font-size:.78rem;color:var(--muted)}
 .arc-s{margin-top:7px;font-size:.78rem;color:var(--muted)}
 #fx{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:90}
 </style>
@@ -254,6 +267,7 @@ input:focus{border-color:var(--c);outline:none}
       <button id="bOptions" class="btn-sec" type="button">Options</button>
     </nav>
   </div>
+  <div class="lbbar"><button class="link-btn" id="lbBtn" type="button">Leaderboards</button></div>
   <div class="signature">Built by Atticus, 10/28/26</div>
 </div>
 
@@ -523,6 +537,56 @@ function fanfare(){
   }catch(e){}
 }
 
+
+/* ---------- leaderboards (saved on the server under the room code) ---------- */
+function lbKey(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
+function lbPut(board,name,score){try{if(room&&room.lbPutMax&&score>0)room.lbPutMax(board,name,score);}catch(e){}}
+var LB={el:null,off:null,tab:'trivia',data:{}};
+function closeLB(){if(LB.off){try{LB.off();}catch(e){}LB.off=null;}if(LB.el){LB.el.remove();LB.el=null;}}
+function lbRows(board){
+  var o=(LB.data&&LB.data[board])||{};
+  return Object.keys(o).map(function(k){return {k:k,n:o[k].n,s:o[k].s||0,t:o[k].t||0};})
+    .sort(function(a,b){return b.s-a.s||a.t-b.t;}).slice(0,25);
+}
+function armBtn(b,label,armedLabel,fn){
+  var t=0;b.addEventListener('click',function(){
+    if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
+    b.dataset.a='1';b.textContent=armedLabel;b.classList.add('armed');
+    t=setTimeout(function(){b.dataset.a='';b.textContent=label;b.classList.remove('armed');},3000);
+  });
+}
+function drawLB(){
+  if(!LB.el)return;
+  var body=LB.el.querySelector('#lbBody'),rows=lbRows(LB.tab),me=P&&P.name?lbKey(P.name):null,isArc=LB.tab==='arcade';
+  var kids=[];
+  if(!rows.length)kids.push(h('p',{class:'hint'},isArc?'No mini game scores yet. Be the first!':'No trivia scores yet. Finish a game to get on the board.'));
+  rows.forEach(function(r,i){
+    var row=h('div',{class:'lb-row'+(!owner&&r.k===me?' me':'')},h('span',{class:'rk'},String(i+1)),h('span',{class:'nm'},r.n||r.k),h('span',{class:'pt'},fmt(r.s)));
+    if(owner){var x=h('button',{class:'lb-x',type:'button'},'Delete');armBtn(x,'Delete','Sure?',function(){room.lbDel(LB.tab,r.k);});row.appendChild(x);}
+    kids.push(row);
+  });
+  if(owner&&rows.length){var c=h('button',{class:'btn-sec',type:'button',style:'margin-top:16px'},'Clear this board');armBtn(c,'Clear this board','Tap again to clear everything on this board',function(){room.lbClear(LB.tab);});kids.push(c);}
+  kids.push(h('p',{class:'lb-note'},isArc?'Best mini game score for each username.':'Highest score in a single game for each username.'));
+  body.replaceChildren.apply(body,kids);
+  LB.el.querySelectorAll('.lb-tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.t===LB.tab);});
+}
+function openLB(){
+  closeLB();
+  if(!room||!room.lbOn){toast('Leaderboards need a connection to the game room.');return;}
+  var tabs=h('div',{class:'lb-tabs'},
+    h('button',{type:'button','data-t':'trivia',on:{click:function(){LB.tab='trivia';drawLB();}}},'Trivia'),
+    h('button',{type:'button','data-t':'arcade',on:{click:function(){LB.tab='arcade';drawLB();}}},'Mini game'));
+  var x=h('button',{class:'icon-btn',type:'button','aria-label':'Close',on:{click:closeLB}},'×');
+  LB.el=h('div',{class:'modal',id:'lbm',role:'dialog','aria-modal':'true'},
+    h('div',{class:'modal-card'},h('div',{class:'modal-head'},h('h2',null,'Leaderboards'),x),tabs,h('div',{id:'lbBody'})));
+  LB.el.addEventListener('click',function(e){if(e.target===LB.el)closeLB();});
+  document.body.appendChild(LB.el);
+  LB.data={};drawLB();
+  LB.off=room.lbOn(function(d){LB.data=d;drawLB();});
+}
+$('#lbBtn').addEventListener('click',openLB);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&LB.el)closeLB();});
+
 /*arcade:start*/
 var ARC_W=320,ARC_H=130,ARC_G=112,ARC_CW=8.4,ARC_LH=13,ARC_PX=26;
 var ARC_SPR={
@@ -531,7 +595,7 @@ var ARC_SPR={
   cart:{rows:['[==o==]','  o  o '],w:7,h:2}
 };
 function arcPlayerRows(frame){return ['|   ','|___',frame?'(+)o':'(x)o'];}
-function arcNew(){return {y:0,vy:0,speed:190,dist:0,obs:[],gap:240,over:false,started:false,t:0};}
+function arcNew(rnd){rnd=rnd||Math.random;return {y:0,vy:0,speed:190,dist:0,obs:[],gap:240,over:false,started:false,t:0,bat:rnd()<1/25?rnd()*10:-1};}
 function arcJump(G){if(G.y<=0.5&&!G.over){G.vy=430;G.started=true;}}
 function arcScore(G){return Math.floor(G.dist/12);}
 function arcStep(G,dt,rnd){
@@ -584,6 +648,13 @@ function arcDraw(){
     var rows=ARC_BG[bi%ARC_BG.length];
     rows.forEach(function(r,ri){cx.fillText(r,bx,ARC_G-6-(rows.length-ri)*ARC_LH);});
   }
+  // easter egg: a bat drifts the opposite way, across the top
+  if(G.bat>=0&&G.t>=G.bat&&G.t<G.bat+7){
+    var bp=(G.t-G.bat)/7,bx=-70+bp*(ARC_W+140),by=26+Math.sin(G.t*2.2)*7;
+    cx.fillStyle='#4a5694';cx.fillText(Math.floor(G.t*6)%2?'/\\^o^/\\':'\\/^o^\\/',bx,by);
+    cx.font='bold 8px ui-monospace,Menlo,Consolas,monospace';cx.fillStyle='#39437a';cx.fillText('~ atticus',bx-6,by+15);
+    cx.font='bold 14px ui-monospace,Menlo,Consolas,monospace';
+  }
   // ground
   cx.fillStyle='#3a4780';var off=(G.dist*1)%24,gy=ARC_G;
   cx.fillRect(0,gy+1,ARC_W,1);
@@ -607,7 +678,7 @@ function arcLoop(now){
   var dt=Math.min(0.05,(now-ARC.last)/1000||0.016);ARC.last=now;
   var wasOver=ARC.G.over;
   arcStep(ARC.G,dt,Math.random);
-  if(!wasOver&&ARC.G.over){var sc=arcScore(ARC.G);if(sc>ARC.hi){ARC.hi=sc;sset('brt.hi',String(sc));}ARC.overAt=now;}
+  if(!wasOver&&ARC.G.over){var sc=arcScore(ARC.G);if(sc>ARC.hi){ARC.hi=sc;sset('brt.hi',String(sc));}ARC.overAt=now;if(P&&P.named&&P.name)lbPut('arcade',P.name,sc);}
   arcDraw();
   ARC.raf=requestAnimationFrame(arcLoop);
 }
@@ -800,6 +871,7 @@ function showFinal(){
   clearInterval(H.timer);
   H.fin=H.phase==='reveal'?H.q+1:H.q;
   H.phase='final';
+  H.players.forEach(function(rec){lbPut('trivia',rec.n,rec.s);});
   setView(viewFinal);saveHost();renderHost();
   if(H.players.size)setTimeout(function(){fxStart('show',true);},250);
 }
@@ -1395,6 +1467,15 @@ function makeRoom(code){
         return {peer:k,isMe:k===cid,sameTab:k===cid,kind:'viewer',guest:false,presence:pr,updatedAt:t};
       });
     },
+    lbOn:function(cb){var r=db.ref('rooms/'+code+'/lb');var f=function(sn){cb(sn.val()||{});};r.on('value',f);return function(){r.off('value',f);};},
+    lbPutMax:function(board,name,score){
+      return db.ref('rooms/'+code+'/lb/'+board+'/'+lbKey(name)).transaction(function(cur){
+        if(cur&&cur.s>=score)return;
+        return {n:String(name).slice(0,16),s:score,t:firebase.database.ServerValue.TIMESTAMP};
+      });
+    },
+    lbDel:function(board,key){return db.ref('rooms/'+code+'/lb/'+board+'/'+key).remove();},
+    lbClear:function(board){return db.ref('rooms/'+code+'/lb/'+board).remove();},
     onPeers:function(ok,err){peerCbs.push({ok:ok,err:err||function(){}});},
     onConnection:function(f){connCbs.push(f);}
   };
