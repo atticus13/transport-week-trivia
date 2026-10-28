@@ -539,10 +539,19 @@ function fanfare(){
 
 
 /* ---------- leaderboards (saved on the server under the room code) ---------- */
+function scramble(str){
+  var h1=0xdeadbeef,h2=0x41c6ce57,i,ch;
+  for(i=0;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (h2>>>0).toString(36)+(h1>>>0).toString(36);
+}
+function pinHash(name,pin){return scramble('brt|'+lbKey(name)+'|'+pin);}
+var ADMIN_H='qjsx21yp55z6',ADMIN=sget('brt.adm')==='1';
 function lbKey(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
 function lbPut(board,name,score){try{if(room&&room.lbPutMax&&score>0)room.lbPutMax(board,name,score);}catch(e){}}
-var LB={el:null,off:null,tab:'trivia',data:{}};
-function closeLB(){if(LB.off){try{LB.off();}catch(e){}LB.off=null;}if(LB.el){LB.el.remove();LB.el=null;}}
+var LB={el:null,off:null,off2:null,tab:'trivia',data:{},acct:{},login:false};
+function closeLB(){if(LB.off2){try{LB.off2();}catch(e){}LB.off2=null;}if(LB.off){try{LB.off();}catch(e){}LB.off=null;}LB.login=false;if(LB.el){LB.el.remove();LB.el=null;}}
 function lbRows(board){
   var o=(LB.data&&LB.data[board])||{};
   return Object.keys(o).map(function(k){return {k:k,n:o[k].n,s:o[k].s||0,t:o[k].t||0};})
@@ -557,25 +566,51 @@ function armBtn(b,label,armedLabel,fn){
 }
 function drawLB(){
   if(!LB.el)return;
-  var body=LB.el.querySelector('#lbBody'),rows=lbRows(LB.tab),me=P&&P.name?lbKey(P.name):null,isArc=LB.tab==='arcade';
-  var kids=[];
-  if(!rows.length)kids.push(h('p',{class:'hint'},isArc?'No mini game scores yet. Be the first!':'No trivia scores yet. Finish a game to get on the board.'));
-  rows.forEach(function(r,i){
-    var row=h('div',{class:'lb-row'+(!owner&&r.k===me?' me':'')},h('span',{class:'rk'},String(i+1)),h('span',{class:'nm'},r.n||r.k),h('span',{class:'pt'},fmt(r.s)));
-    if(owner){var x=h('button',{class:'lb-x',type:'button'},'Delete');armBtn(x,'Delete','Sure?',function(){room.lbDel(LB.tab,r.k);});row.appendChild(x);}
-    kids.push(row);
-  });
-  if(owner&&rows.length){var c=h('button',{class:'btn-sec',type:'button',style:'margin-top:16px'},'Clear this board');armBtn(c,'Clear this board','Tap again to clear everything on this board',function(){room.lbClear(LB.tab);});kids.push(c);}
-  kids.push(h('p',{class:'lb-note'},isArc?'Best mini game score for each username.':'Highest score in a single game for each username.'));
+  var body=LB.el.querySelector('#lbBody'),me=P&&P.name?lbKey(P.name):null,isArc=LB.tab==='arcade',kids=[];
+  if(LB.tab==='accounts'&&ADMIN){
+    var keys=Object.keys(LB.acct||{}).sort();
+    if(!keys.length)kids.push(h('p',{class:'hint'},'No accounts yet.'));
+    keys.forEach(function(k){
+      var a=LB.acct[k],row=h('div',{class:'lb-row'},h('span',{class:'nm'},a.n||k));
+      var rp=h('button',{class:'lb-x',type:'button'},'Reset PIN');armBtn(rp,'Reset PIN','Sure?',function(){room.acctDel(k);toast((a.n||k)+' can pick a new PIN next time they join.');});
+      var dl=h('button',{class:'lb-x',type:'button'},'Delete');armBtn(dl,'Delete','Sure?',function(){room.acctDel(k);room.lbDel('trivia',k);room.lbDel('arcade',k);});
+      row.appendChild(rp);row.appendChild(dl);kids.push(row);
+    });
+    kids.push(h('p',{class:'lb-note'},'Reset PIN frees the PIN so that person can set a new one. Delete removes the account and its scores.'));
+  }else{
+    var rows=lbRows(LB.tab);
+    if(!rows.length)kids.push(h('p',{class:'hint'},isArc?'No mini game scores yet. Be the first!':'No trivia scores yet. Finish a game to get on the board.'));
+    rows.forEach(function(r,i){
+      var row=h('div',{class:'lb-row'+(r.k===me?' me':'')},h('span',{class:'rk'},String(i+1)),h('span',{class:'nm'},r.n||r.k),h('span',{class:'pt'},fmt(r.s)));
+      if(ADMIN){var x=h('button',{class:'lb-x',type:'button'},'Delete');armBtn(x,'Delete','Sure?',function(){room.lbDel(LB.tab,r.k);});row.appendChild(x);}
+      kids.push(row);
+    });
+    if(ADMIN&&rows.length){var c=h('button',{class:'btn-sec',type:'button',style:'margin-top:16px'},'Clear this board');armBtn(c,'Clear this board','Tap again to clear everything on this board',function(){room.lbClear(LB.tab);});kids.push(c);}
+    kids.push(h('p',{class:'lb-note'},isArc?'Best mini game score for each username.':'Highest score in a single game for each username.'));
+  }
+  // admin login / logout, kept small at the bottom
+  if(ADMIN){
+    kids.push(h('p',{class:'lb-note'},h('button',{class:'link-btn',type:'button',on:{click:function(){ADMIN=false;sset('brt.adm','');if(LB.tab==='accounts')LB.tab='trivia';drawLB();}}},'Log out admin')));
+  }else if(LB.login){
+    var u=h('input',{type:'text',class:'big-in',placeholder:'Admin username',autocomplete:'off',autocapitalize:'off'}),pn=h('input',{type:'password',inputmode:'numeric',maxlength:'4',class:'big-in',placeholder:'PIN',autocomplete:'off'});
+    function go(){if(lbKey(u.value)==='farticus'&&pinHash(u.value,pn.value.trim())===ADMIN_H){ADMIN=true;sset('brt.adm','1');LB.login=false;drawLB();}else{toast('Wrong username or PIN.');pn.value='';}}
+    pn.addEventListener('keydown',function(e){if(e.key==='Enter')go();});
+    kids.push(h('div',{style:'margin-top:14px'},u,pn,h('button',{class:'btn-sec',type:'button',style:'margin-top:8px',on:{click:go}},'Log in')));
+  }else{
+    kids.push(h('p',{class:'lb-note'},h('button',{class:'link-btn',type:'button',on:{click:function(){LB.login=true;drawLB();}}},'Admin')));
+  }
   body.replaceChildren.apply(body,kids);
-  LB.el.querySelectorAll('.lb-tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.t===LB.tab);});
+  var tb=LB.el.querySelector('.lb-tabs');
+  tb.querySelector('[data-t=accounts]').hidden=!ADMIN;
+  tb.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.t===LB.tab);});
 }
 function openLB(){
   closeLB();
   if(!room||!room.lbOn){toast('Leaderboards need a connection to the game room.');return;}
   var tabs=h('div',{class:'lb-tabs'},
     h('button',{type:'button','data-t':'trivia',on:{click:function(){LB.tab='trivia';drawLB();}}},'Trivia'),
-    h('button',{type:'button','data-t':'arcade',on:{click:function(){LB.tab='arcade';drawLB();}}},'Mini game'));
+    h('button',{type:'button','data-t':'arcade',on:{click:function(){LB.tab='arcade';drawLB();}}},'Mini game'),
+    h('button',{type:'button','data-t':'accounts',hidden:true,on:{click:function(){LB.tab='accounts';drawLB();}}},'Accounts'));
   var x=h('button',{class:'icon-btn',type:'button','aria-label':'Close',on:{click:closeLB}},'×');
   LB.el=h('div',{class:'modal',id:'lbm',role:'dialog','aria-modal':'true'},
     h('div',{class:'modal-card'},h('div',{class:'modal-head'},h('h2',null,'Leaderboards'),x),tabs,h('div',{id:'lbBody'})));
@@ -583,6 +618,7 @@ function openLB(){
   document.body.appendChild(LB.el);
   LB.data={};drawLB();
   LB.off=room.lbOn(function(d){LB.data=d;drawLB();});
+  LB.off2=room.acctOn(function(d){LB.acct=d;drawLB();});
 }
 $('#lbBtn').addEventListener('click',openLB);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&LB.el)closeLB();});
@@ -674,11 +710,11 @@ function arcDraw(){
   cx.textAlign='left';
 }
 function arcLoop(now){
-  if(!ARC.el||!ARC.el.isConnected){ARC.running=false;ARC.raf=0;return;}
+  if(!ARC.el||!ARC.el.isConnected||ARC.el.offsetParent===null){ARC.running=false;ARC.raf=0;return;}
   var dt=Math.min(0.05,(now-ARC.last)/1000||0.016);ARC.last=now;
   var wasOver=ARC.G.over;
   arcStep(ARC.G,dt,Math.random);
-  if(!wasOver&&ARC.G.over){var sc=arcScore(ARC.G);if(sc>ARC.hi){ARC.hi=sc;sset('brt.hi',String(sc));}ARC.overAt=now;if(P&&P.named&&P.name)lbPut('arcade',P.name,sc);}
+  if(!wasOver&&ARC.G.over){var sc=arcScore(ARC.G);if(sc>ARC.hi){ARC.hi=sc;sset('brt.hi',String(sc));}ARC.overAt=now;var who=arcWho();if(who)lbPut('arcade',who,sc);}
   arcDraw();
   ARC.raf=requestAnimationFrame(arcLoop);
 }
@@ -687,7 +723,8 @@ function arcTap(){
   if(G.over){if(performance.now()-(ARC.overAt||0)>350){ARC.G=arcNew(null,arcFar());arcJump(ARC.G);}return;}
   arcJump(G);
 }
-function arcFar(){return !!(P&&P.name&&String(P.name).toLowerCase()==='farticus');}
+function arcWho(){return owner?(sget('brt.hn')||''):((P&&P.named&&P.name)||'');}
+function arcFar(){return String(arcWho()).toLowerCase()==='farticus';}
 function arcade(){
   if(!ARC.el){
     var dpr=Math.min(2,window.devicePixelRatio||1);
@@ -699,7 +736,7 @@ function arcade(){
     ARC.jb=jb;
     ARC.el=h('div',{class:'arcade'},h('div',{class:'arc-t'},'Play this while you wait'),ARC.cv,jb,h('div',{class:'arc-s'},'Dodge wet floor signs, IV poles, people and stretchers. Your wheelchair is on its own.'));
     document.addEventListener('keydown',function(e){
-      if(!ARC.el.isConnected)return;
+      if(!ARC.el.isConnected||ARC.el.offsetParent===null)return;
       var t=e.target&&e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||(t==='BUTTON'&&e.target!==ARC.jb))return;
       if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();arcTap();}
     });
@@ -1037,19 +1074,32 @@ function enterHost(){
 
 /* ---------- host: options sheet ---------- */
 var mView='';
-var TITLES={menu:'Options',join:'Join the game',settings:'Game settings',questions:'Questions & answers',players:'Players',help:'Instructions'};
+var TITLES={menu:'Options',join:'Join the game',settings:'Game settings',questions:'Questions & answers',players:'Players',help:'Instructions',play:'Mini game'};
 function openModal(v){$('#modal').hidden=false;showView(v||'menu');}
 function closeModal(){$('#modal').hidden=true;mView='';}
 function showView(v){
   mView=v;$('#mTitle').textContent=TITLES[v];$('#mBack').hidden=v==='menu';
-  var b={menu:viewMenu,join:viewJoin,settings:viewSettings,questions:viewQuestions,players:viewPlayers,help:viewHelp}[v];
+  var b={menu:viewMenu,join:viewJoin,settings:viewSettings,questions:viewQuestions,players:viewPlayers,help:viewHelp,play:viewPlay}[v];
   $('#mBody').replaceChildren(b());
 }
 function viewMenu(){
   function item(label,view){return h('button',{class:'opt-item',type:'button',on:{click:function(){showView(view);}}},h('span',null,label),h('span',{class:'chev'},'›'));}
   var kids=[item('Game settings','settings'),item('Questions & answers','questions'),item('Players','players'),item('Join code and link','join')];
+  kids.push(item('Play the mini game','play'));
   kids.push(item('Instructions','help'));
   return h('div',null,kids);
+}
+function viewPlay(){
+  var nm=(sget('brt.hn')||'').slice(0,16);
+  if(nm){
+    return h('div',null,h('p',{class:'opt-hint'},'Playing as '+nm+'. Your best score goes on the mini game leaderboard.'),arcade(),
+      h('p',{style:'text-align:center;margin-top:14px'},h('button',{class:'link-btn',type:'button',on:{click:function(){sset('brt.hn','');showView('play');}}},'Change name')));
+  }
+  var inp=h('input',{type:'text',maxlength:'16',autocomplete:'off',class:'big-in',placeholder:'Your username'});
+  function go(){var v=inp.value.replace(/\s+/g,' ').trim().slice(0,16);if(!v){toast('Type a username first.');return;}sset('brt.hn',v);showView('play');}
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')go();});
+  return h('div',null,h('p',{class:'opt-hint'},'Play while players are joining. Pick a username for the mini game leaderboard.'),inp,
+    h('button',{class:'btn-main',type:'button',style:'margin-top:12px',on:{click:go}},'Play'));
 }
 function viewJoin(){
   return h('div',null,h('p',{class:'opt-hint'},'Players scan this with their phone camera. It works on any wifi or mobile data.'),
@@ -1276,21 +1326,43 @@ function waitScreen(t,s,extra){
 }
 function nameScreen(errMsg,note){
   var input=h('input',{id:'nameIn',type:'text',maxlength:'16',autocomplete:'off',autocapitalize:'words',spellcheck:'false',class:'big-in',value:P.name,placeholder:'Username'});
-  return h('form',{on:{submit:function(e){
-    e.preventDefault();
-    var n=clean(input.value,16);
-    if(!n){input.focus();return;}
+  var pin=h('input',{id:'pinIn',type:'password',inputmode:'numeric',pattern:'[0-9]*',maxlength:'4',autocomplete:'off',class:'big-in',placeholder:'4-digit PIN'});
+  var err=h('p',{class:'err'},errMsg||''),btn=h('button',{class:'btn-main',type:'submit',style:'width:100%;padding:16px;font-size:1.05rem'},'Join');
+  if(!errMsg)err.hidden=true;
+  function fail(m){err.textContent=m;err.hidden=false;btn.disabled=false;btn.textContent='Join';}
+  function enter(n,key){
+    if(key==='farticus'){ADMIN=true;sset('brt.adm','1');}
     P.name=n;P.named=true;P.sub=Date.now();sset('brt.name',n);sset('brt.joined',String(Date.now()));
     announce();keepAwake();renderPlayer();setTimeout(renderPlayer,2700);
+  }
+  return h('form',{on:{submit:function(e){
+    e.preventDefault();
+    var n=clean(input.value,16),p=pin.value.trim();
+    if(!n){input.focus();return;}
+    if(!/^\d{4}$/.test(p)){fail('Your PIN must be exactly 4 digits.');pin.focus();return;}
+    var key=lbKey(n),hh=pinHash(n,p);
+    if(key==='farticus'){if(hh!==ADMIN_H){fail('That username is reserved, or the PIN is wrong.');return;}enter(n,key);return;}
+    if(!room||!room.acctGet){enter(n,key);return;}
+    btn.disabled=true;btn.textContent='Checking...';
+    room.acctGet(key).then(function(a){
+      if(a){if(a.h===hh)enter(n,key);else fail('That username is taken and the PIN does not match. Enter its PIN, or pick another name.');return;}
+      return room.acctCreate(key,{n:n,h:hh}).then(function(ok){
+        if(ok)enter(n,key);
+        else room.acctGet(key).then(function(b){if(b&&b.h===hh)enter(n,key);else fail('That username was just taken. Pick another one.');});
+      });
+    }).catch(function(){fail('Could not check your PIN. Check your connection and try again.');});
   }}},
     h('h2',{class:'h-title'},'Join the game'),
-    h('p',{class:'lede'},'Pick a username. If you lose connection, join again with the same username to pick up where you left off.'),
-    errMsg?h('p',{class:'err'},errMsg):null,
+    h('p',{class:'lede'},'Pick a username and a 4-digit PIN. The PIN keeps other people from using your name. Remember it, because you need it to play again.'),
+    err,
     note?h('p',{class:'hint',style:'text-align:left;margin:0 0 14px'},note):null,
     h('label',{class:'lbl',for:'nameIn'},'Username'),
     input,
     h('p',{class:'hint',style:'text-align:left;margin:-6px 0 16px;font-size:.85rem'},'Tip: You can use a nickname, but please keep it appropriate. Try to come up with something unique that no one else will pick.'),
-    h('button',{class:'btn-main',type:'submit',style:'width:100%;padding:16px;font-size:1.05rem'},'Join'));
+    h('label',{class:'lbl',for:'pinIn'},'PIN'),
+    pin,
+    h('p',{class:'hint',style:'text-align:left;margin:-6px 0 16px;font-size:.85rem'},'New name? Any 4 digits you will remember. Already played? Use the same PIN as before.'),
+    btn);
 }
 function questionScreen(g){
   var locked=P.ans&&P.ans.s===g.s;
@@ -1389,7 +1461,7 @@ function renderPlayer(){
     if(g&&has(g.kk,P.pid))return mount(kickedScreen());
     if(!P.named){var nt=P.leftNote;P.leftNote='';return mount(nameScreen('',nt));}
     if(g&&has(g.no,P.pid)&&Date.now()-P.sub>2500)return mount(nameScreen('That username is already in use. Pick another one, or close the other device first.'));
-    if(!g)return mount(waitScreen('Waiting for the host','The game starts when the host opens it.'));
+    if(!g)return mount(waitScreen('Waiting for the host','The game starts when the host opens it.',h('div',null,h('button',{class:'link-btn',type:'button',on:{click:function(){leaveGame('Pick a new username.');}}},'Change username'),arcade())));
     if(g.ph==='lobby'){
       return mount(waitScreen('You are in, '+P.name,plural(g.np||1,'player')+' here. The host will start the game shortly.',
         h('div',null,h('button',{class:'link-btn',type:'button',on:{click:function(){leaveGame('Pick a new username. Your old name will be removed from the lobby.');}}},'Change username'),arcade())));
@@ -1476,6 +1548,10 @@ function makeRoom(code){
         return {n:String(name).slice(0,16),s:score,t:firebase.database.ServerValue.TIMESTAMP};
       });
     },
+    acctOn:function(cb){var r=db.ref('rooms/'+code+'/acct');var f=function(sn){cb(sn.val()||{});};r.on('value',f);return function(){r.off('value',f);};},
+    acctGet:function(key){return db.ref('rooms/'+code+'/acct/'+key).once('value').then(function(sn){return sn.val();});},
+    acctCreate:function(key,obj){return db.ref('rooms/'+code+'/acct/'+key).transaction(function(cur){if(cur)return;return obj;}).then(function(r){return !!(r&&r.committed);});},
+    acctDel:function(key){return db.ref('rooms/'+code+'/acct/'+key).remove();},
     lbDel:function(board,key){return db.ref('rooms/'+code+'/lb/'+board+'/'+key).remove();},
     lbClear:function(board){return db.ref('rooms/'+code+'/lb/'+board).remove();},
     onPeers:function(ok,err){peerCbs.push({ok:ok,err:err||function(){}});},
