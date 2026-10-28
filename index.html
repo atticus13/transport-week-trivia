@@ -1085,6 +1085,7 @@ function showView(v){
 function viewMenu(){
   function item(label,view){return h('button',{class:'opt-item',type:'button',on:{click:function(){showView(view);}}},h('span',null,label),h('span',{class:'chev'},'›'));}
   var kids=[item('Game settings','settings'),item('Questions & answers','questions'),item('Players','players'),item('Join code and link','join')];
+  kids.push(h('button',{class:'opt-item',type:'button',on:{click:function(){$('#modal').hidden=true;openLB();}}},h('span',null,'Leaderboards and admin login'),h('span',{class:'chev'},'›')));
   kids.push(item('Play the mini game','play'));
   kids.push(item('Instructions','help'));
   return h('div',null,kids);
