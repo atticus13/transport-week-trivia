@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Break Room Trivia</title>
+<title>Transport Week Trivia</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -225,7 +225,7 @@ input:focus{border-color:var(--c);outline:none}
 <div class="app">
   <div class="container" id="container">
     <header class="top">
-      <h1 class="brand">Break Room Trivia</h1>
+      <h1 class="brand">Transport Week Trivia</h1>
       <div class="top-r">
         <span id="status" class="status warn"><i></i><b>Connecting</b></span>
       </div>
@@ -651,7 +651,7 @@ function unban(i){
 }
 function resultsText(){
   var ranks=rankPlayers(H.players),n=doneCount();
-  return 'Break Room Trivia results\n'+ranks.map(function(e,i){return (i+1)+'. '+e[1].n+' - '+fmt(e[1].s)+' points ('+e[1].k+'/'+n+' correct)';}).join('\n');
+  return 'Transport Week Trivia results\n'+ranks.map(function(e,i){return (i+1)+'. '+e[1].n+' - '+fmt(e[1].s)+' points ('+e[1].k+'/'+n+' correct)';}).join('\n');
 }
 
 /* ---------- host: screens ---------- */
