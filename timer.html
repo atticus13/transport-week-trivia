@@ -75,7 +75,7 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
     <div id="board"></div>
     <p class="note" id="boardNote"></p>
   </div>
-  <div class="signature">Built by Atticus, 10/29/26</div>
+  <div class="signature">Built by Atticus for Transport Week, November 2026</div>
 </div>
 <div class="toast" id="toast" hidden></div>
 <script>
@@ -84,7 +84,7 @@ var FIREBASE_CONFIG={databaseURL:"https://transport-week-trivia-default-rtdb.fir
 var ROOM='TWEEK'; // best times: rooms/TWEEK/lb/stack | open/closed: rooms/TWEEK/timer | every run: rooms/TWEEK/timerruns/<name>/<id>
 function sget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function sset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
-var ADMIN=sget('brt.adminok')==='9hjs7e1wijrij',HOST=ADMIN||sget('brt.hostok')==='1hg4rirz0r6k2';
+var ADMIN=sget('brt.adminok')==='eelyiy1bbww01',HOST=ADMIN||sget('brt.hostok')==='1hg4rirz0r6k2';
 var USER=sget('brt.user')||'';
 if(!USER&&!HOST){location.replace('index.html');return;}
 function $(i){return document.getElementById(i);}
@@ -111,6 +111,10 @@ function saveRun(ms){
 if(ref)ref.on('value',function(sn){data=sn.val()||{};draw();},function(){$('boardNote').textContent='Could not load the leaderboard.';});
 else $('boardNote').textContent='Leaderboard unavailable right now.';
 if(tref)tref.on('value',function(sn){var v=sn.val()||{};open=!!v.open;gateUpdate();hostDraw();});
+/* the host leaving this page closes the timer automatically */
+if(HOST&&tref){try{tref.onDisconnect().set({open:false});}catch(e){}window.addEventListener('pagehide',function(){try{tref.set({open:false});}catch(e){}});}
+var HIDDEN=false,HIDEFN=function(){draw();};
+if(db)db.ref('rooms/'+ROOM+'/lbhidden').on('value',function(sn){HIDDEN=!!sn.val();draw();});
 if(runsRef&&HOST)runsRef.on('value',function(sn){runs=sn.val()||{};hostDraw();});
 function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
   if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
@@ -162,6 +166,7 @@ function draw(){
   var me=key(USER),b=$('board');b.textContent='';
   myBest=USER&&data[me]?data[me].s:null;
   if(USER)$('best').innerHTML=myBest!=null?'Your best: <b>'+fmt(myBest)+'</b>':'No time yet. Give it a try!';
+  if(HIDDEN&&!ADMIN){var hp=document.createElement('p');hp.className='note';hp.textContent='Leaderboards are hidden right now.';b.appendChild(hp);$('boardNote').textContent='';return;}
   if(!rows.length){var p=document.createElement('p');p.className='note';p.textContent='No times yet. Be the first!';b.appendChild(p);}
   rows.forEach(function(r,i){
     var d=document.createElement('div');d.className='row'+(r.k===me?' me':'');

@@ -58,7 +58,7 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
     <div id="board"></div>
     <p class="note" id="boardNote">Best score for each username.</p>
   </div>
-  <div class="signature">Built by Atticus, 10/29/26</div>
+  <div class="signature">Built by Atticus for Transport Week, November 2026</div>
 </div>
 <script>
 (function(){
@@ -74,7 +74,7 @@ function scramble(str){
   h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
   return (h2>>>0).toString(36)+(h1>>>0).toString(36);
 }
-var USER=sget('brt.user'),ADMIN=sget('brt.adminok')==='9hjs7e1wijrij';
+var USER=sget('brt.user'),ADMIN=sget('brt.adminok')==='eelyiy1bbww01';
 if(!USER){location.replace('index.html');return;}
 (function(){var bl=document.querySelector('.top a');if(ADMIN){bl.href='admin.html';bl.innerHTML='&larr; Admin menu';}else if(sget('brt.hostok')==='1hg4rirz0r6k2'){bl.href='host.html';bl.innerHTML='&larr; Host tools';}})();
 var P={named:true,name:USER};
@@ -297,6 +297,7 @@ function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
 function draw(){
   var rows=Object.keys(data).map(function(k){return {k:k,n:data[k].n,s:data[k].s||0,t:data[k].t||0};}).sort(function(a,b){return b.s-a.s||a.t-b.t;}).slice(0,25);
   var b=$('#board'),me=lbKey(USER);b.textContent='';
+  if(HIDDEN&&!ADMIN){var hp=document.createElement('p');hp.className='note';hp.textContent='Leaderboards are hidden right now.';b.appendChild(hp);return;}
   if(!rows.length){var p=document.createElement('p');p.className='note';p.textContent='No scores yet. Be the first!';b.appendChild(p);}
   rows.forEach(function(r,i){
     var d=document.createElement('div');d.className='row'+(r.k===me?' me':'');
@@ -308,6 +309,8 @@ function draw(){
   if(ADMIN&&rows.length){var c=document.createElement('button');c.className='btn-sec';c.style.marginTop='14px';c.type='button';c.textContent='Clear leaderboard';armBtn(c,'Clear leaderboard','Tap again to clear everything',function(){ref.remove();});b.appendChild(c);}
 }
 if(ref)ref.on('value',function(sn){data=sn.val()||{};draw();});
+var HIDDEN=false;
+if(db)db.ref('rooms/'+ROOM+'/lbhidden').on('value',function(sn){HIDDEN=!!sn.val();draw();});
 })();
 </script>
 </body>

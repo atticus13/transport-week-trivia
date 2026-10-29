@@ -49,7 +49,7 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
 </style>
 </head>
 <body>
-<div class="wrap"><div class="card" id="root"></div><div class="signature">Built by Atticus, 10/29/26</div></div>
+<div class="wrap"><div class="card" id="root"></div><div class="signature">Built by Atticus for Transport Week, November 2026</div></div>
 <script>
 (function(){
 var FIREBASE_CONFIG={databaseURL:"https://transport-week-trivia-default-rtdb.firebaseio.com"};
@@ -96,14 +96,23 @@ function menu(){
       el('a',{class:'tile',href:'trivia.html'},el('b',null,'Trivia'),el('span',null,'Run a game. The big screen shows the QR code.')),
       el('a',{class:'tile',href:'bingo.html'},el('b',null,'Bingo'),el('span',null,'The word drawer.')),
       el('a',{class:'tile',href:'timer.html'},el('b',null,'Game Timer'),el('span',null,'Open or close the timer, delete runs, and edit its leaderboard.'))),
+    el('h2',null,'Show or hide leaderboards'),el('div',{id:'hidebox'}),
     el('h2',null,'Edit leaderboards'),el('div',{id:'mgr'}),
     el('p',{style:'text-align:center;margin:22px 0 0'},el('a',{class:'link',href:'index.html'},'Player home'),' ',
       el('button',{class:'link',type:'button',on:{click:function(){sset('brt.adminok','');sset('brt.hostok','');login();}}},'Log out')));
   try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();}catch(e){db=null;}
   if(!db){document.getElementById('mgr').textContent='Could not connect.';return;}
   var r=db.ref('rooms/'+ROOM+'/lb'),f=function(sn){data=sn.val()||{};drawMgr();};
-  r.on('value',f);off=function(){r.off('value',f);};
+  r.on('value',f);
+  var hr=db.ref('rooms/'+ROOM+'/lbhidden'),hf=function(sn){drawHide(!!sn.val());};
+  drawHide(false);hr.on('value',hf);off=function(){r.off('value',f);hr.off('value',hf);};
   drawMgr();
+}
+function drawHide(hid){
+  var b=document.getElementById('hidebox');if(!b)return;
+  var btn=el('button',{class:'btn-sec',type:'button'},hid?'Show leaderboards':'Hide all leaderboards');
+  btn.addEventListener('click',function(){db.ref('rooms/'+ROOM+'/lbhidden').set(hid?null:true);});
+  b.replaceChildren(el('p',{class:'note',style:'margin:0 0 10px'},hid?'Leaderboards are HIDDEN from everyone except you. Players see a "hidden" message everywhere.':'Leaderboards are visible to everyone. Hiding removes them from every game and the High Scores page until you show them again. Scores keep being saved.'),btn);
 }
 function drawMgr(){
   var m=document.getElementById('mgr');if(!m)return;

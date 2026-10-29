@@ -272,7 +272,7 @@ input:focus{border-color:var(--c);outline:none}
     </nav>
   </div>
   <div class="lbbar"><button class="link-btn" id="lbBtn" type="button">Leaderboards</button> &nbsp;&middot;&nbsp; <a class="link-btn" id="homeLnk" href="index.html" style="text-decoration:underline">Home</a></div>
-  <div class="signature">Built by Atticus, 10/28/26</div>
+  <div class="signature">Built by Atticus for Transport Week, November 2026</div>
 </div>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" hidden>
@@ -549,7 +549,7 @@ function lbAdd(board,name,pts){try{if(room&&room.lbAdd&&pts>0)room.lbAdd(board,n
 function arcLoadHi(w,cb){try{if(room&&room.lbGet)room.lbGet('arcade',w,cb);}catch(e){}}
 function lbPut(board,name,score){try{if(room&&room.lbPutMax&&score>0)room.lbPutMax(board,name,score);}catch(e){}}
 var LB={el:null,off:null,tab:'trivia',data:{}};
-function closeLB(){if(LB.off){try{LB.off();}catch(e){}LB.off=null;}if(LB.el){LB.el.remove();LB.el=null;}}
+function closeLB(){if(LB.offH){try{LB.offH();}catch(e){}LB.offH=null;}if(LB.off){try{LB.off();}catch(e){}LB.off=null;}if(LB.el){LB.el.remove();LB.el=null;}}
 function lbRows(board){
   var o=(LB.data&&LB.data[board])||{};
   return Object.keys(o).map(function(k){return {k:k,n:o[k].n,s:o[k].s||0,t:o[k].t||0};})
@@ -566,6 +566,7 @@ function drawLB(){
   if(!LB.el)return;
   var body=LB.el.querySelector('#lbBody'),rows=lbRows(LB.tab),me=P&&P.name?lbKey(P.name):null,isArc=LB.tab==='arcade',isTot=LB.tab==='total';
   var kids=[];
+  if(LB.hidden&&!isAdmin()){body.replaceChildren(h('p',{class:'hint'},'Leaderboards are hidden right now.'));return;}
   if(!rows.length)kids.push(h('p',{class:'hint'},isArc?'No mini game scores yet. Be the first!':'No trivia scores yet. Finish a game to get on the board.'));
   rows.forEach(function(r,i){
     var row=h('div',{class:'lb-row'+(!owner&&r.k===me?' me':'')},h('span',{class:'rk'},String(i+1)),h('span',{class:'nm'},r.n||r.k),h('span',{class:'pt'},fmt(r.s)));
@@ -591,6 +592,7 @@ function openLB(){
   document.body.appendChild(LB.el);
   LB.data={};drawLB();
   LB.off=room.lbOn(function(d){LB.data=d;drawLB();});
+  LB.offH=room.lbHiddenOn?room.lbHiddenOn(function(v){LB.hidden=!!v;drawLB();}):null;
 }
 $('#lbBtn').addEventListener('click',openLB);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&LB.el)closeLB();});
@@ -1501,7 +1503,7 @@ function scramble(str){
 }
 var HOST_H='1hg4rirz0r6k2';
 function hostOK(){return sget('brt.hostok')===HOST_H;}
-var ADMIN_H='9hjs7e1wijrij';
+var ADMIN_H='eelyiy1bbww01';
 function isAdmin(){return sget('brt.adminok')===ADMIN_H;}
 function hostGate(){
   var pw=h('input',{type:'password',inputmode:'numeric',maxlength:'4',autocomplete:'off',class:'big-in',placeholder:'Host passcode',id:'hostPw'});
@@ -1576,6 +1578,7 @@ function makeRoom(code){
       });
     },
     lbGet:function(board,name,cb){db.ref('rooms/'+code+'/lb/'+board+'/'+lbKey(name)).once('value',function(sn){var v=sn.val();cb((v&&v.s)||0);},function(){cb(-1);});},
+    lbHiddenOn:function(cb){var r=db.ref('rooms/'+code+'/lbhidden');var f=function(sn){cb(sn.val());};r.on('value',f);return function(){r.off('value',f);};},
     lbDel:function(board,key){return db.ref('rooms/'+code+'/lb/'+board+'/'+key).remove();},
     lbClear:function(board){return db.ref('rooms/'+code+'/lb/'+board).remove();},
     onPeers:function(ok,err){peerCbs.push({ok:ok,err:err||function(){}});},

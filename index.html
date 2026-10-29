@@ -35,7 +35,7 @@ h1{margin:0 0 6px;font:900 clamp(34px,9vw,52px)/.95 var(--display);text-transfor
 </style>
 </head>
 <body>
-<div class="wrap"><div class="card" id="root"></div><div class="signature">Built by Atticus, 10/29/26</div></div>
+<div class="wrap"><div class="card" id="root"></div><div class="signature">Built by Atticus for Transport Week, November 2026</div></div>
 <script>
 (function(){
 // An old trivia join link or QR code (index.html?r=CODE) still works: send it to the trivia page.
@@ -66,6 +66,8 @@ function login(){
   inp.focus();
 }
 function hostLink(){return el('a',{class:'tile',href:'host.html',style:'margin-bottom:16px;padding:14px;text-align:center;border-style:dashed'},el('b',{style:'font-size:20px;margin:0'},'Hosting an event?'),el('span',null,'Open the host tools (passcode needed)'));}
+var TRIVIA_FORM='https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=D8x6Ko0Q8Uyx_0D6F7gwzq085dwmUlpEiaflC7FXq8JUOUxJVkc0U1kwNjAzUUVCNUpXSjA0SUU2QS4u';  // paste your Microsoft Forms link between the quotes
+function formBtn(){return TRIVIA_FORM?el('a',{class:'tile',href:TRIVIA_FORM,target:'_blank',rel:'noopener noreferrer',style:'margin-top:16px;padding:14px;text-align:center;border-style:dashed'},el('b',{style:'font-size:20px;margin:0'},'Submit a trivia question'),el('span',null,'Opens in a new tab. Your game stays right here.')):null;}
 function adminBox(){return el('p',{style:'text-align:center;margin:22px 0 0'},el('a',{class:'link',href:'host.html'},'Host tools'),' \u00b7 ',el('a',{class:'link',href:'admin.html'},'Admin'));}
 function home(){
   var u=sget('brt.user');
@@ -74,10 +76,11 @@ function home(){
     el('a',{class:'tile',href:'wheelchair.html'},el('b',null,'Wheelchair Run'),el('span',null,'Jump the hospital obstacles. Beat the best score.')),
     el('a',{class:'tile',href:'timer.html'},el('b',null,'Game Timer'),el('span',null,'Hold, let go to start, touch to stop. Fastest time wins when the host opens it.'))
   ];
+  tiles.push(el('a',{class:'tile',href:'scores.html'},el('b',null,'High Scores'),el('span',null,'See the leaderboards for every game.')));
   var out=el('button',{class:'link',type:'button',on:{click:function(){sset('brt.user','');sset('brt.name','');sset('brt.joined','0');render();}}},'Not you? Log out');
   root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),
     el('div',{class:'who'},el('span',null,'Logged in as ',el('b',null,u),null),out),
-    el('div',{class:'tiles'},tiles),adminBox());
+    el('div',{class:'tiles'},tiles),formBtn(),adminBox());
 }
 function render(){if(sget('brt.user'))home();else login();}
 render();
