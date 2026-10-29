@@ -43,6 +43,11 @@ h1{margin:0 0 6px;font:900 clamp(34px,9vw,52px)/.95 var(--display);text-transfor
 .hostp b{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:#ff9a66}
 .hostp .btns{display:flex;gap:8px;margin:10px 0}.hostp .btns button{flex:1}
 .pad.locked{opacity:.55;cursor:not-allowed}
+.cool{position:relative;overflow:hidden}
+.cool[disabled]{cursor:not-allowed;color:#9aa6c8;background:#1a2340}
+.cool .bar{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#FA4616,#ff9a66);opacity:.55;transform-origin:left;animation:cool 5s linear forwards}
+.cool .lab{position:relative}
+@keyframes cool{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 .hostp .row .tm{font-size:20px}
 h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:uppercase;color:#9db2ff}
 .row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
@@ -65,7 +70,7 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
     <div id="hostPanel" class="hostp" hidden></div>
     <div id="pad" class="pad" role="button" tabindex="0" aria-label="Timer pad"></div>
     <p class="best" id="best"></p>
-    <div id="again" class="again" hidden><button class="btn-main" id="againBtn" type="button">Go again</button></div>
+    <div id="again" class="again" hidden><button class="btn-main cool" id="againBtn" type="button"><span class="bar"></span><span class="lab">Go again</span></button></div>
     <h2>Fastest times</h2>
     <div id="board"></div>
     <p class="note" id="boardNote"></p>
@@ -186,7 +191,7 @@ function down(e){
   if(state==='running'){
     var ms=Math.round(performance.now()-tStart);cancelAnimationFrame(raf);state='done';
     setPad('done',(ms/1000).toFixed(2),'Time: '+fmt(ms));
-    $('again').hidden=false;
+    startCooldown();
     saveRun(ms);
   }
 }
@@ -206,7 +211,14 @@ pad.addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter'){e.pr
   if(state==='idle'&&gate().ok){state='armed';holdAt=performance.now();pid=-1;setPad('armed','READY','Release the key to start.');}
   else if(state==='running')down({preventDefault:function(){},pointerType:'key',pointerId:-1});}});
 pad.addEventListener('keyup',function(e){if((e.key===' '||e.key==='Enter')&&state==='armed'){up({preventDefault:function(){},pointerId:-1});}});
-$('againBtn').addEventListener('click',idle);
+var coolT=0;
+function startCooldown(){
+  var b=$('againBtn'),bar=b.querySelector('.bar');
+  $('again').hidden=false;b.disabled=true;
+  bar.style.animation='none';void bar.offsetWidth;bar.style.animation='';bar.hidden=false;
+  clearTimeout(coolT);coolT=setTimeout(function(){b.disabled=false;bar.hidden=true;},5000);
+}
+$('againBtn').addEventListener('click',function(){if(!this.disabled)idle();});
 idle();
 })();
 </script>

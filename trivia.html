@@ -247,6 +247,8 @@ input:focus{border-color:var(--c);outline:none}
 .lb-note{margin:12px 0 0;font-size:.78rem;color:var(--muted)}
 .arc-s{margin-top:7px;font-size:.78rem;color:var(--muted)}
 #fx{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:90}
+.hostback{position:fixed;left:12px;top:10px;z-index:30;font-size:.8rem;color:var(--muted);text-decoration:none;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--card)}
+.hostback:hover{color:var(--text)}
 </style>
 </head>
 <body>
@@ -281,6 +283,7 @@ input:focus{border-color:var(--c);outline:none}
     <div id="mBody"></div>
   </div>
 </div>
+<a class="hostback" id="hostBack" href="host.html" hidden>&larr; Host tools</a>
 <div id="toast" class="toast" hidden></div>
 
 <script>
@@ -1453,6 +1456,7 @@ function hostGate(){
     h('p',{style:'text-align:center;margin-top:14px'},h('a',{class:'link-btn',href:'host.html',style:'text-decoration:underline'},'Back to host tools')));
 }
 function route(){
+  var hb=document.getElementById('hostBack');if(hb){hb.hidden=!(owner&&hostOK());hb.href=isAdmin()?'admin.html':'host.html';hb.innerHTML=isAdmin()?'&larr; Admin menu':'&larr; Host tools';}
   var hl=document.getElementById('homeLnk');if(hl&&owner){hl.href=isAdmin()?'admin.html':'host.html';hl.textContent=isAdmin()?'Admin menu':'Host tools';}
   if(!ready)return;
   if(!room||roomDead){
