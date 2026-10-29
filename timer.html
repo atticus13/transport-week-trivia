@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Game Timer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#070b16;--card:#0d1424;--card2:#121a30;--border:#1f2a48;--text:#e8ecf8;--muted:#8d99b8;--a:#2f4fe0;--b:#0021A5;--c:#FA4616;--peri:#9bb0ff;--cream:#fff1e8;--good:#3ddc97;--display:"Big Shoulders Display","Arial Narrow",Impact,system-ui,sans-serif;--ui:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);line-height:1.45;min-height:100vh;padding:16px max(16px,env(safe-area-inset-right)) 28px max(16px,env(safe-area-inset-left))}
+button,input{font:inherit;color:inherit}:focus-visible{outline:3px solid var(--peri);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px}
+h1{margin:0 0 6px;font:900 clamp(34px,9vw,52px)/.95 var(--display);text-transform:uppercase;text-align:center}
+.sub{margin:0 0 18px;text-align:center;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;font-size:.78rem;font-weight:600}
+.btn-main{display:block;width:100%;padding:15px;border:0;border-radius:12px;font-weight:700;font-size:1.05rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--a),var(--b))}
+.btn-sec{padding:11px 16px;border:1px solid var(--border);border-radius:12px;background:var(--card2);cursor:pointer;font-weight:600}
+.btn-sec.armed{background:#7a2a10;border-color:var(--c);color:#fff}
+.inp{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);font-size:1.1rem;margin:6px 0 14px}
+.lbl{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px;font-size:.85rem}
+.err{color:#ff9a9a;margin:0 0 12px}
+.signature{margin-top:26px;text-align:center;font-style:italic;font-size:.72rem;color:var(--muted);opacity:.6}
+
+
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:.85rem;color:var(--muted)}
+.top a{color:var(--muted)}.top b{color:var(--text)}
+.pad{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:min(52vh,420px);min-height:260px;border-radius:22px;border:2px solid var(--border);background:radial-gradient(ellipse at 40% 35%,#141d3e 0%,var(--card2) 60%,#0a1022 100%);user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:center;padding:16px;transition:border-color .15s,background .15s}
+.pad .big{font:900 clamp(64px,22vw,120px)/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.pad .msg{font-size:1rem;color:var(--muted);max-width:30ch}
+.pad.armed{border-color:var(--good);background:radial-gradient(ellipse at 50% 40%,#12402f 0%,#0c2a22 70%)}
+.pad.armed .msg{color:#b8f5d9}
+.pad.running{border-color:var(--c);background:radial-gradient(ellipse at 50% 40%,#3a1a10 0%,#1b0f12 70%)}
+.pad.running .msg{color:#ffb08a}
+.pad.done{border-color:var(--peri)}
+.pad.bad .big{color:#ff9a9a}
+.best{margin:12px 0 0;text-align:center;color:var(--muted)}.best b{color:var(--text)}
+.again{margin-top:12px}
+.hostp{margin-bottom:14px;padding:14px;border:1px dashed var(--c);border-radius:14px}
+.hostp b{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:#ff9a66}
+.hostp .btns{display:flex;gap:8px;margin:10px 0}.hostp .btns button{flex:1}
+.pad.locked{opacity:.55;cursor:not-allowed}
+.cool{position:relative;overflow:hidden}
+.cool[disabled]{cursor:not-allowed;color:#9aa6c8;background:#1a2340}
+.cool .bar{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#FA4616,#ff9a66);opacity:.55;transform-origin:left;animation:cool 5s linear forwards}
+.cool .lab{position:relative}
+@keyframes cool{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.hostp .row .tm{font-size:20px}
+h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:uppercase;color:#9db2ff}
+.row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
+.row .rk{font:900 22px/1 var(--display);color:var(--c);min-width:32px}
+.row .nm{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .tm{font:800 24px/1 var(--display);font-variant-numeric:tabular-nums}
+.row.me{background:rgba(47,79,224,.16);border-radius:8px;padding-inline:8px}
+.x{padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-weight:700;font-size:.75rem;cursor:pointer}
+.x.armed{border-color:#ff6b6b;color:#ff9a9a}
+.note{margin:12px 0 0;font-size:.78rem;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#101a3c;border:1px solid var(--border);padding:10px 16px;border-radius:12px;z-index:9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a id="backLink" href="index.html">&larr; Home</a><span id="who"></span></div>
+  <div class="card">
+    <h1>Game Timer</h1>
+    <p class="sub">Hold, let go, stop</p>
+    <div id="hostPanel" class="hostp" hidden></div>
+    <div id="pad" class="pad" role="button" tabindex="0" aria-label="Timer pad"></div>
+    <p class="best" id="best"></p>
+    <div id="again" class="again" hidden><button class="btn-main cool" id="againBtn" type="button"><span class="bar"></span><span class="lab">Go again</span></button></div>
+    <h2>Fastest times</h2>
+    <div id="board"></div>
+    <p class="note" id="boardNote"></p>
+  </div>
+  <div class="signature">Built by Atticus, 10/29/26</div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function(){
+var FIREBASE_CONFIG={databaseURL:"https://transport-week-trivia-default-rtdb.firebaseio.com"};
+var ROOM='TWEEK'; // best times: rooms/TWEEK/lb/stack | open/closed: rooms/TWEEK/timer | every run: rooms/TWEEK/timerruns/<name>/<id>
+function sget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function sset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+var ADMIN=sget('brt.adminok')==='eelyiy1bbww01',HOST=ADMIN||sget('brt.hostok')==='1hg4rirz0r6k2';
+var USER=sget('brt.user')||'';
+if(!USER&&!HOST){location.replace('index.html');return;}
+function $(i){return document.getElementById(i);}
+if(ADMIN){$('backLink').href='admin.html';$('backLink').innerHTML='&larr; Admin menu';}
+else if(HOST){$('backLink').href='host.html';$('backLink').innerHTML='&larr; Host tools';}
+function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true;},2800);}
+function key(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
+function fmt(ms){var s=ms/1000;if(s<60)return s.toFixed(2)+'s';var m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(2).padStart(5,'0');}
+if(USER){$('who').innerHTML='Playing as <b></b>';$('who').querySelector('b').textContent=USER;}
+else{$('who').textContent='Host controls';$('pad').hidden=true;$('best').hidden=true;}
+
+/* ---------- storage ---------- */
+var db=null,ref=null,tref=null,runsRef=null,data={},runs={},myBest=null,open=false;
+try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();ref=db.ref('rooms/'+ROOM+'/lb/stack');tref=db.ref('rooms/'+ROOM+'/timer');runsRef=db.ref('rooms/'+ROOM+'/timerruns');}catch(e){db=null;}
+function saveRun(ms){
+  if(!db)return;
+  var k=key(USER);
+  runsRef.child(k).push({n:USER,ms:ms,at:Date.now()});
+  ref.child(k).transaction(function(cur){
+    if(cur&&cur.s<=ms)return;
+    return {n:USER,s:ms,t:firebase.database.ServerValue.TIMESTAMP};
+  }).then(function(r){if(r&&r.committed)toast('New personal best!');}).catch(function(){toast('Could not save your time. Check your connection.');});
+}
+if(ref)ref.on('value',function(sn){data=sn.val()||{};draw();},function(){$('boardNote').textContent='Could not load the leaderboard.';});
+else $('boardNote').textContent='Leaderboard unavailable right now.';
+if(tref)tref.on('value',function(sn){var v=sn.val()||{};open=!!v.open;gateUpdate();hostDraw();});
+/* the host leaving this page closes the timer automatically */
+if(HOST&&tref){try{tref.onDisconnect().set({open:false});}catch(e){}window.addEventListener('pagehide',function(){try{tref.set({open:false});}catch(e){}});}
+var HIDDEN=false,HIDEFN=function(){draw();};
+if(db)db.ref('rooms/'+ROOM+'/lbhidden').on('value',function(sn){HIDDEN=!!sn.val();draw();});
+if(runsRef&&HOST)runsRef.on('value',function(sn){runs=sn.val()||{};hostDraw();});
+function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
+  if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
+  b.dataset.a='1';b.textContent=armed;b.classList.add('armed');
+  t=setTimeout(function(){b.dataset.a='';b.textContent=label;b.classList.remove('armed');},3000);});}
+function gate(){return open?{ok:true}:{ok:false,msg:'The timer is closed. Wait for the host to open it.'};}
+function gateUpdate(){if(state==='idle'||state==='locked')idle();}
+
+/* ---------- host controls: open or close, and delete a run ---------- */
+function allRuns(){
+  var out=[];
+  Object.keys(runs).forEach(function(k){var o=runs[k]||{};Object.keys(o).forEach(function(id){var r=o[id];if(r&&r.ms!=null)out.push({k:k,id:id,n:r.n||k,ms:r.ms,at:r.at||0});});});
+  return out.sort(function(a,b){return b.at-a.at;});
+}
+function deleteRun(r){
+  // remove that run, then put the player's best time back to their fastest remaining run (or no entry)
+  runsRef.child(r.k).child(r.id).remove();
+  var left=[];Object.keys(runs[r.k]||{}).forEach(function(id){var x=runs[r.k][id];if(id!==r.id&&x&&x.ms!=null)left.push(x);});
+  if(!left.length){ref.child(r.k).remove();return;}
+  var best=left.reduce(function(a,b){return b.ms<a.ms?b:a;});
+  ref.child(r.k).set({n:best.n||r.n,s:best.ms,t:firebase.database.ServerValue.TIMESTAMP});
+}
+function hostDraw(){
+  var p=$('hostPanel');if(!HOST){p.hidden=true;return;}
+  p.hidden=false;p.textContent='';
+  var b=document.createElement('b');b.textContent='Host controls';p.appendChild(b);
+  var st=document.createElement('p');st.style.margin='8px 0 0';st.textContent=open?'Timer is OPEN. Players can run it as many times as they like.':'Timer is CLOSED. Players cannot use it.';p.appendChild(st);
+  var bt=document.createElement('div');bt.className='btns';
+  var tog=document.createElement('button');tog.type='button';tog.className='btn-sec';tog.textContent=open?'Close timer':'Open timer';
+  tog.addEventListener('click',function(){tref.set({open:!open});});
+  bt.appendChild(tog);p.appendChild(bt);
+  var list=allRuns().slice(0,6);
+  if(list.length){
+    var h3=document.createElement('p');h3.className='note';h3.style.margin='0 0 4px';h3.textContent='Latest runs (newest first). Delete one if it was a wash. The player keeps their fastest remaining time.';p.appendChild(h3);
+    list.forEach(function(r){
+      var d=document.createElement('div');d.className='row';
+      d.innerHTML='<span class="nm"></span><span class="tm"></span>';
+      d.children[0].textContent=r.n;d.children[1].textContent=fmt(r.ms);
+      var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Delete';
+      armBtn(x,'Delete','Sure?',function(){deleteRun(r);});
+      d.appendChild(x);p.appendChild(d);
+    });
+  }
+}
+
+/* ---------- leaderboard ---------- */
+function draw(){
+  var rows=Object.keys(data).map(function(k){return {k:k,n:data[k].n,s:data[k].s,t:data[k].t||0};}).sort(function(a,b){return a.s-b.s||a.t-b.t;}).slice(0,25);
+  var me=key(USER),b=$('board');b.textContent='';
+  myBest=USER&&data[me]?data[me].s:null;
+  if(USER)$('best').innerHTML=myBest!=null?'Your best: <b>'+fmt(myBest)+'</b>':'No time yet. Give it a try!';
+  if(HIDDEN&&!ADMIN){var hp=document.createElement('p');hp.className='note';hp.textContent='Leaderboards are hidden right now.';b.appendChild(hp);$('boardNote').textContent='';return;}
+  if(!rows.length){var p=document.createElement('p');p.className='note';p.textContent='No times yet. Be the first!';b.appendChild(p);}
+  rows.forEach(function(r,i){
+    var d=document.createElement('div');d.className='row'+(r.k===me?' me':'');
+    d.innerHTML='<span class="rk"></span><span class="nm"></span><span class="tm"></span>';
+    d.children[0].textContent=i+1;d.children[1].textContent=r.n||r.k;d.children[2].textContent=fmt(r.s);
+    if(ADMIN){var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Delete';armBtn(x,'Delete','Sure?',function(){ref.child(r.k).remove();runsRef.child(r.k).remove();});d.appendChild(x);}
+    b.appendChild(d);
+  });
+  if(ADMIN&&rows.length){var c=document.createElement('button');c.className='btn-sec';c.style.marginTop='14px';c.type='button';c.textContent='Clear leaderboard';armBtn(c,'Clear leaderboard','Tap again to clear everything',function(){ref.remove();runsRef.remove();});b.appendChild(c);}
+  $('boardNote').textContent='Each username keeps its fastest time.';
+}
+
+/* ---------- the timer ---------- */
+var pad=$('pad'),state='idle',tStart=0,raf=0,holdAt=0,pid=null;
+function setPad(cls,big,msg){pad.className='pad '+cls;pad.innerHTML='<div class="big"></div><div class="msg"></div>';pad.children[0].textContent=big;pad.children[1].textContent=msg;}
+function idle(){
+  var g=gate();$('again').hidden=true;
+  if(!g.ok){state='locked';setPad('locked','--',g.msg);return;}
+  state='idle';setPad('','0.00','Press and HOLD the pad to get ready. Let go to start the clock.');
+}
+function tick(){pad.children[0].textContent=((performance.now()-tStart)/1000).toFixed(2);raf=requestAnimationFrame(tick);}
+function down(e){
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  e.preventDefault();
+  try{pad.setPointerCapture(e.pointerId);}catch(x){}
+  if(state==='idle'&&gate().ok){state='armed';holdAt=performance.now();pid=e.pointerId;setPad('armed','READY','Let go to start the clock.');return;}
+  if(state==='running'){
+    var ms=Math.round(performance.now()-tStart);cancelAnimationFrame(raf);state='done';
+    setPad('done',(ms/1000).toFixed(2),'Time: '+fmt(ms));
+    startCooldown();
+    saveRun(ms);
+  }
+}
+function up(e){
+  e.preventDefault();
+  if(state==='armed'&&e.pointerId===pid){
+    if(performance.now()-holdAt<250){idle();return;}  // too quick, treat as a tap and reset
+    if(!gate().ok){idle();return;}
+    state='running';tStart=performance.now();setPad('running','0.00','Touch the pad to stop.');raf=requestAnimationFrame(tick);
+  }
+}
+pad.addEventListener('pointerdown',down);
+pad.addEventListener('pointerup',up);
+pad.addEventListener('pointercancel',function(){if(state==='armed')idle();});
+pad.addEventListener('contextmenu',function(e){e.preventDefault();});
+pad.addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter'){e.preventDefault();if(e.repeat)return;
+  if(state==='idle'&&gate().ok){state='armed';holdAt=performance.now();pid=-1;setPad('armed','READY','Release the key to start.');}
+  else if(state==='running')down({preventDefault:function(){},pointerType:'key',pointerId:-1});}});
+pad.addEventListener('keyup',function(e){if((e.key===' '||e.key==='Enter')&&state==='armed'){up({preventDefault:function(){},pointerId:-1});}});
+var coolT=0;
+function startCooldown(){
+  var b=$('againBtn'),bar=b.querySelector('.bar');
+  $('again').hidden=false;b.disabled=true;
+  bar.style.animation='none';void bar.offsetWidth;bar.style.animation='';bar.hidden=false;
+  clearTimeout(coolT);coolT=setTimeout(function(){b.disabled=false;bar.hidden=true;},5000);
+}
+$('againBtn').addEventListener('click',function(){if(!this.disabled)idle();});
+idle();
+})();
+</script>
+</body>
+</html>
