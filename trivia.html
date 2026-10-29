@@ -1287,10 +1287,10 @@ $('#modal').addEventListener('click',function(e){if(e.target===$('#modal')&&mVie
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('#modal').hidden){if(mView==='menu')closeModal();else showView('menu');}});
 
 /* ---------- player ---------- */
-var P={pid:sget('brt.pid')||'',name:clean(sget('brt.name')||sget('brt.user')||'',16),named:false,g:null,sig:'',gid:'',ans:null,qStart:0,seq:-1,tick:0,sub:0};
+var P={pid:sget('brt.pid')||'',name:clean(sget('brt.user')||sget('brt.name')||'',16),named:false,g:null,sig:'',gid:'',ans:null,qStart:0,seq:-1,tick:0,sub:0};
 if(!ID_RE.test(P.pid)){P.pid=rid();sset('brt.pid',P.pid);}
 (function(){var j=Number(sget('brt.joined'));if(P.name&&j&&Date.now()-j<12*3600e3)P.named=true;
-  if(!owner&&P.name&&sget('brt.user')&&sget('brt.left')!=='1'){P.named=true;sset('brt.joined',String(Date.now()));}})();
+  if(!owner&&P.name&&sget('brt.user')){P.named=true;P.sub=Date.now();sset('brt.name',P.name);sset('brt.left','');sset('brt.joined',String(Date.now()));}})();
 
 function hostPeer(){
   var best=null;
@@ -1310,7 +1310,7 @@ function has(list,v){return Array.isArray(list)&&list.indexOf(v)>=0;}
 function playSync(){
   var hp=hostPeer(),g=hp?hp.presence.g:null;
   P.g=g;
-  var sig=g?[g.id,g.ph,g.i,g.s,g.np,(g.no||[]).join(','),(g.kk||[]).join(',')].join('|'):'';
+  var sig=g?[g.id,g.ph,g.i,g.s,g.np,(g.no||[]).join(','),(g.kk||[]).join(','),(g.res&&g.res[P.pid])?1:0].join('|'):'';
   var fresh=sig!==P.sig;
   if(fresh){
     P.sig=sig;
@@ -1449,19 +1449,19 @@ var leaveArm=0;
 })();
 function renderPlayer(){
   var g0=P.g,kicked=!!(g0&&has(g0.kk,P.pid));
-  $('#leaveBtn').hidden=!(P.named&&!kicked);
+  $('#leaveBtn').hidden=true;
   if(!P.named&&!kicked&&$('#nameIn'))return;
   clearInterval(P.tick);
   try{
     var g=P.g;
     $('#hostbar').hidden=true;
     if(g&&has(g.kk,P.pid))return mount(kickedScreen());
-    if(!P.named){var nt=P.leftNote;P.leftNote='';return mount(nameScreen('',nt));}
-    if(g&&has(g.no,P.pid)&&Date.now()-P.sub>2500)return mount(nameScreen('That username is already in use. Pick another one, or close the other device first.'));
-    if(!g)return mount(waitScreen('Waiting for the host','The game starts when the host opens it.',h('div',null,h('button',{class:'link-btn',type:'button',on:{click:function(){leaveGame('Pick a new username.');}}},'Change username'),arcade())));
+    if(!P.named){location.replace('index.html');return;}
+    if(g&&has(g.no,P.pid)&&Date.now()-P.sub>2500)return mount(h('section',{class:'center'},h('h2',{class:'h-title',style:'margin-top:8vh'},'Username already in use'),h('p',{class:'lede'},'Someone is already playing as '+P.name+'. If that is you on another device, close it there. Otherwise go back home, log out, and pick a different username.'),h('a',{class:'btn-main',href:'index.html',style:'display:block;text-align:center;text-decoration:none;max-width:320px;margin:18px auto 0'},'Back to home')));
+    if(!g)return mount(waitScreen('Waiting for the host','The game starts when the host opens it.',h('div',null,null,arcade())));
     if(g.ph==='lobby'){
       return mount(waitScreen('You are in, '+P.name,plural(g.np||1,'player')+' here. The host will start the game shortly.',
-        h('div',null,h('button',{class:'link-btn',type:'button',on:{click:function(){leaveGame('Pick a new username. Your old name will be removed from the lobby.');}}},'Change username'),arcade())));
+        h('div',null,null,arcade())));
     }
     if(g.ph==='question')return mount(questionScreen(g));
     if(g.ph==='reveal')return mount(revealScreen(g));
