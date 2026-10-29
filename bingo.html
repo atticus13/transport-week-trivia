@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bingo Word Drawer</title>
+<style>
+:root{
+  --bg:#070b16; --card:#0d1424; --card2:#121a30; --border:#1f2a48;
+  --text:#e8ecf8; --muted:#8d99b8;
+  --a:#2f4fe0; --b:#0021A5; --c:#FA4616;
+}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px 20px 12px;display:flex;flex-direction:column;align-items:center;min-height:100vh;box-sizing:border-box}
+.container{width:100%;max-width:600px;background:var(--card);padding:24px;border-radius:20px;border:1px solid var(--border)}
+h1{margin:0 0 18px;text-align:center;font-size:1.1rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.stage{display:flex;flex-direction:column;align-items:center;background:radial-gradient(ellipse at 40% 35%,#141d3e 0%,var(--card2) 55%,#0a1022 100%);border:1px solid var(--border);border-radius:16px;padding:12px 16px;margin-bottom:20px}
+canvas{width:100%;max-width:440px;height:auto;aspect-ratio:440/290}
+.display-card{min-height:56px;font-size:2rem;font-weight:700;text-align:center;padding:4px 10px 14px;word-break:break-word;
+  background:linear-gradient(90deg,#8fa5ff,#fff1e8,#ff7a45);-webkit-background-clip:text;background-clip:text;color:transparent}
+.display-card.idle{background:none;color:var(--muted);font-size:1.2rem;font-weight:500;-webkit-background-clip:border-box;background-clip:border-box}
+.stats{display:flex;justify-content:space-between;margin-bottom:18px;font-weight:600;color:var(--muted);font-size:.9rem}
+.stats span{color:var(--text)}
+.actions{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px}
+button{padding:13px;font-size:.95rem;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:filter .2s,background .2s;font-family:inherit}
+.btn-main{background:linear-gradient(90deg,var(--a),var(--b));color:#fff}
+.btn-main:hover{filter:brightness(1.12)}
+.btn-main:disabled{background:#1a2340;color:#5b6684;cursor:not-allowed;filter:none}
+.btn-sec{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn-sec:hover{background:#18223f}
+.btn-sec.armed{background:#7a2a10;border-color:#FA4616;color:#fff}
+.row{display:flex;gap:10px;margin-bottom:10px}
+.row button{flex:1}
+.editor-panel{display:none;margin:12px 0 20px}
+.editor-panel.open{display:block}
+.editor-panel p{font-size:.85rem;margin-top:0;color:var(--muted)}
+textarea{width:100%;height:150px;padding:10px;border:1px solid var(--border);border-radius:12px;resize:vertical;font-family:inherit;background:var(--bg);color:var(--text)}
+.history-box{border-top:1px solid var(--border);padding-top:16px;margin-top:14px}
+.history-box strong{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.history-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.history-tag{background:#101a3c;color:#a9bbff;border:1px solid #223273;padding:4px 12px;border-radius:9999px;font-size:.85rem;font-weight:500}
+
+/* ---------- Latest-draw banner ---------- */
+.banner{margin-bottom:20px;text-align:center;position:relative;border-radius:16px;padding:22px 16px 24px;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.banner-label{font-size:.72rem;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;position:relative;z-index:1}
+.banner-word{position:relative;z-index:1;font-weight:800;line-height:1.05;font-size:calc(var(--fs,4) * 1rem);word-break:break-word;max-width:100%}
+@media (max-width:480px){.banner-word{font-size:calc(var(--fs,4) * .62rem)}}
+.banner-word.idle{opacity:.4}
+.banner-word.pop{animation:bpop .6s cubic-bezier(.2,1.4,.4,1)}
+@keyframes bpop{0%{transform:scale(.55);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* Marquee with chasing bulbs */
+.banner{background:linear-gradient(180deg,#0b1752,#070d26);border:3px solid #1f2f78;box-shadow:inset 0 0 44px rgba(0,33,165,.45);padding:36px 36px 38px}
+.bulbs{position:absolute;display:flex;justify-content:space-between;z-index:2}
+.banner{--bs:10px}
+.bulbs.top,.bulbs.bottom{left:9px;right:9px;height:var(--bs)}
+.bulbs.top{top:9px}
+.bulbs.bottom{bottom:9px}
+.bulbs.left,.bulbs.right{top:calc(9px + var(--bs));bottom:calc(9px + var(--bs));width:var(--bs);flex-direction:column;justify-content:space-evenly}
+.bulbs.left{left:9px}
+.bulbs.right{right:9px}
+.bulbs span{--on:#ffd9c2;--glow:#FA4616;width:var(--bs);height:var(--bs);border-radius:50%;background:#1b2650;animation:bulb 1s steps(1) infinite}
+.bulbs span.o{animation-delay:-.5s;--on:#cfdbff;--glow:#3b5bff}
+.banner.flash .bulbs span{animation-duration:.28s}
+.bulbs{transition:opacity .45s}
+.banner.lights-dim .bulbs{opacity:.26}
+.banner.lights-off .bulbs span{animation:none!important;background:#1b2650;box-shadow:none}
+@keyframes bulb{0%{background:var(--on);box-shadow:0 0 calc(var(--bs)*.5) calc(var(--bs)*.2) var(--glow),0 0 calc(var(--bs)*1.4) calc(var(--bs)*.3) var(--glow)}50%{background:#1b2650;box-shadow:none}}
+.banner-label{color:#9db2ff}
+.banner-word{color:#fff3ea;letter-spacing:.07em;font-weight:700;text-shadow:0 0 2px #fff,0 0 5px #ffb08a,0 0 12px #ff7a45,0 0 26px #FA4616,0 0 52px #FA4616,0 0 90px rgba(250,70,22,.6)}
+.banner-word.pop{animation:bpop .6s cubic-bezier(.2,1.4,.4,1),flicker 7s linear .6s infinite}
+@keyframes flicker{0%,17%,19%,23%,54%,56%,100%{opacity:1}18%,22%,55%{opacity:.78}20%{opacity:.9}}
+
+/* Note for the latest draw (under Draw History) */
+.hist-note{margin-top:10px;min-height:1.5em;padding-left:10px;border-left:2px solid #FA4616;font-size:.95rem;color:#b9c7ff;opacity:0;transition:opacity .6s .35s}
+.hist-note.show{opacity:1}
+.hist-note.show{cursor:help;outline:none}
+.hist-note .hn-text{filter:blur(.42em);opacity:.7;transition:filter .25s,opacity .25s;user-select:none;-webkit-user-select:none}
+.hist-note .hn-hint{display:block;margin-top:2px;font-size:.72em;font-style:italic;color:#5b6684;transition:opacity .2s}
+.hist-note:hover .hn-text,.hist-note:focus-visible .hn-text,.hist-note.open .hn-text{filter:none;opacity:1;user-select:text;-webkit-user-select:text}
+.hist-note:hover .hn-hint,.hist-note:focus-visible .hn-hint,.hist-note.open .hn-hint{opacity:0}
+.hist-note .hn-word{color:#fff;font-weight:700;margin-right:6px}
+/* Word list table */
+.tbl-wrap{max-height:min(42vh,340px);overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
+.tbl-wrap table{width:100%;border-collapse:collapse}
+.tbl-wrap th{position:sticky;top:0;z-index:1;background:#121a30;text-align:left;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:9px 10px}
+.tbl-wrap td{padding:0;border-top:1px solid var(--border)}
+.tbl-wrap td.w{width:24%}.tbl-wrap td.q,.tbl-wrap td.n{width:38%}
+.modal-card.wide{max-width:min(880px,96vw)}
+.tbl-wrap td.x{width:36px;text-align:center}
+.tbl-wrap input{width:100%;background:transparent;border:none;color:var(--text);padding:9px 10px;font:inherit;font-size:.9rem;outline:none}
+.tbl-wrap input:focus{background:#0f1a3a}
+.tbl-wrap input::placeholder{color:#3e4968}
+.opt{text-transform:none;letter-spacing:0;color:#5b6684;font-weight:400}
+.rowdel{padding:2px 8px;background:transparent;color:var(--muted);font-size:1.1rem;border-radius:6px}
+.rowdel:hover{color:#ff8a5c}
+.tbl-actions{display:flex;gap:10px;margin:10px 0 4px}
+.tbl-actions button{flex:1;padding:10px;font-size:.85rem}
+
+/* How-to popup */
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(4,7,16,.78);backdrop-filter:blur(3px)}
+.modal[hidden]{display:none}
+.modal-card{width:100%;max-width:560px;max-height:90vh;overflow:auto;background:var(--card);border:1px solid #1f2f78;border-radius:18px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal-card h2{margin:0 0 14px;font-size:1rem;letter-spacing:.16em;text-transform:uppercase;color:#9db2ff}
+.modal-card ol{margin:0 0 18px;padding-left:20px;line-height:1.55;font-size:.95rem}
+.modal-card li{margin-bottom:9px}
+.modal-card li b{color:#ff9a66;font-weight:600}
+@media (max-width:420px){.row{flex-wrap:wrap}.row button{flex:1 1 45%}}
+
+
+
+/* Bonus question bar (supplement question + hover-to-reveal answer) */
+.bonus{margin-top:14px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:stretch;position:sticky;bottom:10px;z-index:5;
+  padding:14px 16px;border-radius:14px;border:1px solid #2a3a86;border-left:4px solid #FA4616;background:linear-gradient(90deg,#0b1752,#0d1a5e 60%,#0a1340);box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.bonus[hidden]{display:none!important}
+.bonus.idle{display:none}
+.bonus.pop{animation:bonusIn .5s cubic-bezier(.2,1.2,.4,1)}
+@keyframes bonusIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.bonus-tag{font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:#ff9a66;font-weight:700;margin-bottom:5px}
+.bonus-q{font-size:1.1rem;font-weight:700;line-height:1.25;color:#fff;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.bonus-a{position:relative;display:flex;flex-direction:column;justify-content:center;padding:10px 14px;border-radius:12px;background:rgba(4,8,30,.55);border:1px dashed #3b4f9e;cursor:help;outline:none;overflow:hidden}
+.bonus.noans .bonus-a{display:none}
+.bonus.noans{grid-template-columns:1fr}
+.bonus-a-label{font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;color:#8d99b8;margin-bottom:3px}
+.bonus-a-text{font-size:1rem;font-weight:600;color:#cfdbff;filter:blur(.5em);opacity:.7;transition:filter .25s,opacity .25s;user-select:none;-webkit-user-select:none}
+.bonus-a-hint{position:absolute;right:12px;bottom:6px;font-size:.68rem;font-style:italic;color:#7f8fc4;transition:opacity .2s}
+.bonus-a:hover .bonus-a-text,.bonus-a:focus-visible .bonus-a-text,.bonus.open .bonus-a-text{filter:none;opacity:1;user-select:text;-webkit-user-select:text}
+.bonus-a:hover .bonus-a-hint,.bonus-a:focus-visible .bonus-a-hint,.bonus.open .bonus-a-hint{opacity:0}
+.bonus.idle .bonus-q{font-weight:500;color:#8d99b8}
+.bonus.idle .bonus-a{display:none}
+@media (max-width:640px){.bonus{grid-template-columns:1fr;gap:10px}}
+
+/* ---------- Big screens (laptop, TV): two-column layout that fills the display ---------- */
+@media (min-width:900px) and (min-height:560px) and (min-aspect-ratio:5/4){
+  html{font-size:clamp(16px,min(1.05vw,1.9vh),34px)}
+  body{height:100vh;min-height:0;padding:1.6vh 1.6vw .5vh;overflow:auto}
+  .container{max-width:none;flex:1;min-height:0;padding:1.5vh 1.4vw;border-radius:1.4rem;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:1.6vh 1.4vw}
+  .banner{grid-column:1/-1;margin:0;min-height:0;height:clamp(150px,27vh,440px);padding:2vh 2vw}
+  .banner-label{font-size:clamp(.8rem,1.5vh,1.5rem);margin-bottom:1vh}
+  .banner-word{font-size:min(15vh,calc(132vw / var(--len,7)))}
+  .stage{grid-column:1;margin:0;min-height:0;flex-direction:row;justify-content:center;justify-content:center;padding:1.2vh 1vw;container-type:size}
+  canvas#wheel{width:min(100cqw,calc(100cqh * 440 / 290));max-width:none;height:auto}
+  .side{grid-column:2;display:flex;flex-direction:column;min-height:0;gap:1.3vh}
+  .stats{margin:0;font-size:1.15rem}
+  .actions{margin:0;gap:.8rem}
+  .side button{padding:.85em;font-size:1.1rem;border-radius:.8rem}
+  .btn-bingo{margin:0;font-size:1.3rem}
+  #btnOptions{margin:0!important}
+  .history-box{flex:1;min-height:0;overflow:auto;margin:0;padding-top:1.3vh}
+  .history-box{-webkit-mask-image:linear-gradient(#000 calc(100% - 2.2rem),transparent);mask-image:linear-gradient(#000 calc(100% - 2.2rem),transparent)}
+  .history-box strong{font-size:.9rem}
+  .history-tag{font-size:1rem;padding:.3em .85em}
+  .hist-note{font-size:1.15rem}
+  body .foot{max-width:none;padding-top:.5vh}
+  body .signature{font-size:.75rem}
+  .bonus,.bonus.idle{grid-column:1/-1;margin:0;position:static;display:grid;height:clamp(96px,15vh,230px);padding:1.2vh 1.4vw;gap:1.4vw;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:center}
+  .bonus.noans{grid-template-columns:1fr}
+  .bonus-tag{font-size:clamp(.7rem,1.4vh,1.2rem);margin-bottom:.5vh}
+  .bonus-q{font-size:min(3.6vh,calc(190vw / var(--qlen,40)));-webkit-line-clamp:3}
+  .bonus-a{height:100%;padding:1vh 1.1vw}
+  .bonus-a-label{font-size:clamp(.66rem,1.3vh,1.1rem)}
+  .bonus-a-text{font-size:min(3vh,calc(150vw / var(--alen,30)))}
+  .bonus-a-hint{font-size:clamp(.68rem,1.3vh,1.1rem)}
+  .modal-card{max-width:min(720px,62vw)}
+  .modal-card.wide{max-width:min(1000px,80vw)}
+  .bingo-close{font-size:1.3rem;padding:.7em 2em}
+}
+
+/* Marquee breaker switch (ON / DIM / OFF) */
+.lights-ctl{display:flex;align-items:center;gap:.55em;font-size:.72rem;color:#5b6684;letter-spacing:.14em;text-transform:uppercase;justify-self:start}
+.lc-state{min-width:2.4em;font-weight:700;color:#ff9a66;transition:color .2s}
+.lights-ctl:has(.lsw[data-mode="1"]) .lc-state{color:#d9a35b}
+.lights-ctl:has(.lsw[data-mode="2"]) .lc-state{color:#6b7694}
+.lsw{position:relative;width:4.6em;height:2.1em;padding:0;border-radius:.6em;background:linear-gradient(#080c1a,#141c36);border:1px solid #2a3566;box-shadow:inset 0 .2em .45em rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.04);cursor:pointer;font-size:inherit}
+.lsw:focus-visible{outline:2px solid #7c96ff;outline-offset:2px}
+.lsw-track{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;padding:0 .75em}
+.lsw-track i{width:2px;height:.8em;background:#26315c;border-radius:1px}
+.lsw-knob{position:absolute;top:.22em;left:.25em;width:1.5em;height:1.5em;border-radius:.4em;background:repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px),linear-gradient(#ff9a66,#FA4616);box-shadow:0 .15em .35em rgba(0,0,0,.6),0 0 .8em rgba(250,70,22,.55),inset 0 1px 0 rgba(255,255,255,.4);transition:left .2s cubic-bezier(.3,1.7,.5,1),background .2s,box-shadow .2s}
+.lsw[data-mode="1"] .lsw-knob{left:1.55em;background:repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px),linear-gradient(#e0b878,#a8742f);box-shadow:0 .15em .35em rgba(0,0,0,.6),0 0 .45em rgba(217,163,91,.3),inset 0 1px 0 rgba(255,255,255,.3)}
+.lsw[data-mode="2"] .lsw-knob{left:2.85em;background:repeating-linear-gradient(90deg,rgba(0,0,0,.2) 0 2px,transparent 2px 4px),linear-gradient(#59627f,#2f3750);box-shadow:0 .15em .35em rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.18)}
+@media (min-width:900px) and (min-height:560px) and (min-aspect-ratio:5/4){.lights-ctl{font-size:.8rem}}
+@media (max-width:640px){body .foot{grid-template-columns:1fr;row-gap:12px;justify-items:center}body .lights-ctl{justify-self:start}body .foot>div:last-child{display:none}}
+
+/* Options overlay */
+.modal-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.modal-head h2{flex:1;margin:0}
+.icon-btn{width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem;line-height:1;background:#18223f;color:var(--text);border:1px solid var(--border);border-radius:10px}
+.icon-btn:hover{background:#1f2c52}
+.icon-btn[hidden],.opt-view[hidden]{display:none}
+.opt-item{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px;margin-bottom:8px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-weight:600;font-size:1rem;text-align:left}
+.foot{margin-top:auto;padding-top:22px;width:100%;max-width:600px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.signature{margin:0;padding:0;text-align:center;font-style:italic;font-size:.72rem;color:var(--muted);opacity:.55}
+.btn-bingo{width:100%;margin-bottom:10px;color:#fff;font-weight:800;letter-spacing:.2em;font-size:1rem;background:linear-gradient(90deg,#FA4616,#ff7a45);box-shadow:0 0 0 1px rgba(255,154,102,.5),0 6px 22px rgba(250,70,22,.28)}
+.btn-bingo:hover{filter:brightness(1.1)}
+.bingo-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 45%,rgba(0,33,165,.88),rgba(4,7,16,.95) 70%);animation:bgIn .35s ease-out}
+@keyframes bgIn{from{opacity:0}to{opacity:1}}
+.bingo-overlay[hidden]{display:none}
+#confetti{position:absolute;inset:0;width:100%;max-width:none;height:100%;aspect-ratio:auto;pointer-events:none}
+.bingo-center{position:relative;z-index:1;text-align:center;padding:20px}
+.bingo-kicker{font-size:clamp(.8rem,2.6vw,2.2rem);letter-spacing:.5em;text-transform:uppercase;color:#9bb0ff;text-shadow:0 0 10px #2f54eb;margin-bottom:6px;animation:kick .6s .25s both}
+@keyframes kick{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.bingo-word{font-weight:900;font-size:clamp(4rem,min(22vw,32vh),22rem);line-height:1;letter-spacing:.05em;color:#fff;text-shadow:0 0 4px #fff,0 0 12px #ffb08a,0 0 26px #FA4616,0 0 56px #FA4616,0 0 100px #2f54eb;animation:bingoPop .8s cubic-bezier(.2,1.5,.4,1) both,bingoPulse 1.6s 1s ease-in-out infinite}
+@keyframes bingoPop{0%{transform:scale(.2) rotate(-8deg);opacity:0}100%{transform:none;opacity:1}}
+@keyframes bingoPulse{50%{transform:scale(1.04)}}
+.bingo-close{margin-top:28px;padding:14px 34px;font-size:1rem;animation:kick .6s .9s both}
+@media (prefers-reduced-motion:reduce){.bingo-word{animation:bingoPop .3s both}}
+#ballFx{position:fixed;left:0;top:0;width:100vw;height:100vh;max-width:none;aspect-ratio:auto;z-index:90;pointer-events:none}
+.cards-msg{font-size:.85rem;color:var(--muted);margin:-2px 4px 10px;line-height:1.4}.cards-msg:empty{display:none}.cards-msg a{color:#ff7a45}
+.opt-item:hover{background:#18223f}
+.chev{font-size:1.5rem;opacity:.6;line-height:1}
+.sw{display:flex;align-items:center;gap:10px;font-size:.85rem;font-weight:500;color:var(--muted)}
+.sw i{position:relative;width:42px;height:24px;border-radius:12px;background:#2a3566;transition:background .2s}
+.sw i::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.opt-item.on .sw i{background:#2f54eb}
+.opt-item.on .sw i::after{transform:translateX(18px)}
+.opt-hint{margin:0 0 12px;font-size:.88rem;color:var(--muted);line-height:1.5}
+.foot-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:10px}
+.homelink{position:fixed;left:12px;top:10px;z-index:30;font-size:.8rem;color:var(--muted);text-decoration:none;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--card)}
+.homelink:hover{color:var(--text)}
+</style>
+</head>
+<body>
+<a class="homelink" href="index.html">&larr; Home</a>
+<script>
+(function(){
+function scramble(str){
+  var h1=0xdeadbeef,h2=0x41c6ce57,i,ch;
+  for(i=0;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (h2>>>0).toString(36)+(h1>>>0).toString(36);
+}
+var HH='1hg4rirz0r6k2';
+function ok(){try{return localStorage.getItem('brt.hostok')===HH;}catch(e){return false;}}
+if(ok())return;
+document.addEventListener('DOMContentLoaded',function(){
+  var c=document.querySelector('.container');if(c)c.style.display='none';
+  var o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;z-index:99;background:#070b16;display:flex;align-items:center;justify-content:center;padding:20px';
+  o.innerHTML='<form style="max-width:340px;width:100%;text-align:center;color:#e8ecf8;font-family:system-ui,sans-serif"><h2 style="margin:0 0 8px;letter-spacing:.14em;text-transform:uppercase;font-size:1.1rem">Bingo host</h2><p style="color:#8d99b8;margin:0 0 14px">Enter the host passcode.</p><input id="hp" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Host passcode" style="width:100%;padding:14px;border-radius:12px;border:1px solid #1f2a48;background:#0d1424;color:#e8ecf8;font-size:1.1rem;text-align:center"><p id="he" style="color:#ff9a9a;margin:10px 0 0" hidden>Wrong password.</p><button type="submit" style="width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:linear-gradient(90deg,#2f4fe0,#0021A5);color:#fff;font-weight:700;font-size:1rem;cursor:pointer">Enter</button><p style="margin-top:14px"><a href="index.html" style="color:#8d99b8">Back to Home</a></p></form>';
+  document.body.appendChild(o);
+  var f=o.querySelector('form'),i=o.querySelector('#hp');i.focus();
+  f.addEventListener('submit',function(e){e.preventDefault();
+    if(scramble('brt|host|'+i.value.trim())===HH){try{localStorage.setItem('brt.hostok',HH);}catch(x){}o.remove();if(c)c.style.display='';}
+    else{o.querySelector('#he').hidden=false;i.value='';i.focus();}});
+});
+})();
+</script>
+
+<div class="container">
+  <div class="banner" id="banner">
+    <div class="bulbs top"></div><div class="bulbs bottom"></div><div class="bulbs left"></div><div class="bulbs right"></div>
+    <div class="banner-label">Latest draw</div>
+    <div class="banner-word idle" id="bannerWord">READY</div>
+  </div>
+    <div class="stage">
+    <canvas id="wheel"></canvas>
+  </div>
+  <div class="side">
+  <div class="stats">
+    <div>Remaining <span id="countRemaining">0</span></div>
+    <div>Total <span id="countTotal">0</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn-main" id="btnDraw">Draw Word</button>
+    <button class="btn-sec" id="btnReset">Reset</button>
+  </div>
+  <button class="btn-bingo" id="btnBingo">&#127881; BINGO!</button>
+  <button class="btn-sec" id="btnOptions" style="width:100%;margin-bottom:10px">Options</button>
+  <div class="history-box">
+    <strong>Draw History</strong>
+    <div class="history-list" id="historyList"></div>
+  </div>
+  </div>
+  <div class="bonus idle" id="bonus" hidden aria-live="polite">
+    <div class="bonus-main">
+      <div class="bonus-tag" id="bonusTag">Bonus question</div>
+      <div class="bonus-q" id="bonusQ"></div>
+    </div>
+    <div class="bonus-a" id="bonusA" tabindex="0" role="button" aria-label="Reveal the answer">
+      <span class="bonus-a-label">Answer</span>
+      <span class="bonus-a-text" id="bonusAText"></span>
+      <span class="bonus-a-hint">Hover to reveal</span>
+    </div>
+  </div>
+</div>
+
+<div class="bingo-overlay" id="bingoOverlay" role="dialog" aria-modal="true" aria-label="Bingo celebration" hidden>
+  <canvas id="confetti"></canvas>
+  <div class="bingo-center">
+    <div class="bingo-kicker">We have a winner</div>
+    <div class="bingo-word">BINGO!</div>
+    <button class="btn-main bingo-close" id="bingoClose">Keep Playing</button>
+  </div>
+</div>
+
+<canvas id="ballFx" aria-hidden="true"></canvas>
+
+<div class="foot">
+  <div class="lights-ctl">
+    <span class="lc-label">Marquee</span>
+    <button class="lsw" id="lightSwitch" data-mode="0" aria-label="Marquee lights: on. Press to dim.">
+      <span class="lsw-track"><i></i><i></i><i></i></span>
+      <span class="lsw-knob"></span>
+    </button>
+    <span class="lc-state" id="lcState" aria-live="polite">ON</span>
+  </div>
+  <div class="signature">Built by Atticus, 10/28/26, for Transport Week</div>
+  <div></div>
+</div>
+
+<div class="modal" id="optionsModal" role="dialog" aria-modal="true" aria-labelledby="optTitle" hidden>
+  <div class="modal-card" id="modalCard">
+    <div class="modal-head">
+      <button class="icon-btn" id="optBack" aria-label="Back" hidden>&larr;</button>
+      <h2 id="optTitle">Options</h2>
+      <button class="icon-btn" id="optClose" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="opt-view" id="viewMenu">
+      <button class="opt-item" id="btnSound" role="switch" aria-checked="true"><span>Sound</span><span class="sw"><span class="sw-label">On</span><i></i></span></button>
+      <button class="opt-item" id="btnEdit"><span>Edit Word List</span><span class="chev">&rsaquo;</span></button>
+      <button class="opt-item" id="btnCards"><span>Generate Bingo Cards (PDF)</span><span class="chev">&darr;</span></button>
+      <div class="cards-msg" id="cardsMsg" aria-live="polite"></div>
+      <button class="opt-item" id="btnHelp"><span>Instructions</span><span class="chev">&rsaquo;</span></button>
+    </div>
+
+    <div class="opt-view" id="viewEdit" hidden>
+      <p class="opt-hint">Paste a table from Excel or Sheets (Word, Supplement Question, Supplement Answer columns) into the first Word cell to replace the whole list, or type directly in the cells. Questions and answers are optional. Saving starts a new game.</p>
+      <div class="tbl-wrap"><table><thead><tr><th>Word</th><th>Supplement Question <span class="opt">(optional)</span></th><th>Supplement Answer <span class="opt">(optional)</span></th><th></th></tr></thead><tbody id="listBody"></tbody></table></div>
+      <div class="tbl-actions"><button class="btn-sec" id="btnAddRow">+ Add row</button><button class="btn-sec" id="btnClearTable">Clear table</button></div>
+      <div id="editorMsg" style="color:#ff8a5c;font-size:.85rem;margin-top:6px;min-height:1em"></div>
+      <div class="foot-actions"><button class="btn-sec" id="btnCancelEdit">Cancel</button><button class="btn-main" id="btnSave">Save &amp; Apply List</button></div>
+    </div>
+
+    <div class="opt-view" id="viewHelp" hidden>
+      <ol>
+        <li><b>Draw Word</b> spins the wheel and picks one word at random.</li>
+        <li>The word lights up in the <b>Latest Draw</b> sign at the top. If that word has a supplement question, it appears in the <b>Bonus Question</b> bar at the bottom. Hover over the answer box (or tap it) to reveal the answer.</li>
+        <li>Drawn balls drop into the tray beside the wheel and the word is added to the history. A word can't come up twice in the same round.</li>
+        <li><b>Reset</b> puts every ball back and starts a new round. Tap it twice to confirm.</li>
+        <li><b>Options &rarr; Edit Word List</b> opens a table of words, supplement questions and supplement answers. Type in it, or copy a table from Excel and paste it into the first Word cell. Then press <b>Save &amp; Apply List</b>, which starts a new round.</li>
+        <li><b>Options &rarr; Generate Bingo Cards</b> downloads a PDF of 40 different cards (24 random words from your list plus a FREE center), two per page. Print it and cut on the dashed line.</li>
+        <li><b>Options &rarr; Sound</b> turns the sound effects on or off. Progress saves automatically, so a refresh won't lose your game.</li>
+      </ol>
+      <button class="btn-main" style="width:100%" id="btnHelpDone">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_ENTRIES = [["ADTU", "Admission/Discharge Transition Unit"], ["ADTU/O-F", "CDU within the ADTU"], ["BMTU 72", "Bone Marrow transplant Unit"], ["BRONCH", ""], ["BURN 24/25", ""], ["C M/S 66", "Cardiac Med Surge"], ["C M/S 67", "Cardiac Med Surge"], ["C-ICU 76", "Cardiac ICU"], ["C-ICU 77", "Cardiac ICU"], ["TV-ICU 87", "Thoracic & Vascular ICU"], ["CATH LAB", ""], ["CT", ""], ["DIALYSIS", ""], ["ENDO", ""], ["FLUORO", ""], ["IMC 11-4", "Intermediate care unit (also contains some MICU beds)"], ["IMC 94", "Intermediate care unit"], ["IR", ""], ["L&D 34", "Labor & Delivery"], ["MBU 35", "Mother/Baby Unit"], ["MED SURG 11-5", ""], ["MED SURG 64", ""], ["MED SURG 65", ""], ["MED SURG 74", ""], ["MED SURG 75", ""], ["MED SURG 95", ""], ["MICU 82", ""], ["MRI", ""], ["MED SURG 56", ""], ["MED SURG 57", ""], ["NeICU 46", "Neuro ICU"], ["NeICU 47", "Neuro ICU"], ["NICU", "Neonatal ICU"], ["NUC MED", ""], ["OR", ""], ["PACU", ""], ["PEDS 42", ""], ["PEDS 44", ""], ["PEDS 45", ""], ["PEDS ED", ""], ["PICU", ""], ["RAD/ONC", ""], ["SELECT 54", ""], ["SELECT 55", ""], ["ULTRASOUND", ""], ["X-RAY", ""], ["PCICU 10-2", "Pediatric Cardiac ICU"]];  // [unit, note]
+const KEY = 'bingoWordDrawerV2';
+
+let masterList = DEFAULT_ENTRIES.map(e => e[0]), noteMap = Object.fromEntries(DEFAULT_ENTRIES.filter(e => e[1]).map(e => [e[0], e[1]])), qMap = {}, pool = [], history = [], usedColors = [], lastDraw = '', soundOn = true;
+
+/* ---------- Persistence ---------- */
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({masterList, noteMap, qMap, pool, history, usedColors, lastDraw, soundOn})); } catch(e) {}
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && Array.isArray(d.masterList) && Array.isArray(d.pool) && Array.isArray(d.history)) {
+      masterList = d.masterList; pool = d.pool;
+      noteMap = (d.noteMap && typeof d.noteMap === 'object') ? d.noteMap : {};   // noteMap now holds the supplement ANSWERS
+      qMap = (d.qMap && typeof d.qMap === 'object') ? d.qMap : {};
+      history = d.history.map(String);
+      usedColors = (Array.isArray(d.usedColors) ? d.usedColors : []).slice(0, history.length);
+      for (let i = 0; i < history.length; i++) if (!usedColors[i] || !PALETTE.includes(usedColors[i])) usedColors[i] = PALETTE[i % PALETTE.length];
+      lastDraw = d.lastDraw ? String(d.lastDraw) : '';
+      soundOn = d.soundOn !== false;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+/* ---------- Audio ---------- */
+let audioCtx = null;
+function beep(freq, dur, type='sine', vol=0.05) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+function successSound() {
+  [[523.25,0],[659.25,90],[783.99,180],[1046.5,280]].forEach(([f,t]) => setTimeout(() => beep(f,0.25,'square',0.12), t));
+}
+function plinkSound() { beep(1318.5, 0.12, 'sine', 0.2); setTimeout(() => beep(1760, 0.1, 'sine', 0.12), 60); }
+
+/* ---------- Wheel graphics (abstract, flat, dark) ---------- */
+const canvas = document.getElementById('wheel'), ctx = canvas.getContext('2d');
+const W = 440, H = 290, CX = 165, CY = 145, R = 105;
+const TX = 332, TY = 26, TW = 92, TH = 248;             // tray for used balls
+const MAX_BALLS = 26;
+const RESET_FLIGHT = 650;
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
+let rs = dpr;   // render scale: follows the on-screen size so the wheel stays sharp on big screens
+function sizeWheel() {
+  const w = canvas.clientWidth || W;
+  rs = Math.min(3.5, Math.max(1, w / W * dpr));
+  const nw = Math.round(W * rs), nh = Math.round(H * rs);
+  if (canvas.width !== nw || canvas.height !== nh) { canvas.width = nw; canvas.height = nh; }
+}
+sizeWheel();
+if (window.ResizeObserver) new ResizeObserver(sizeWheel).observe(canvas); else window.addEventListener('resize', sizeWheel);
+
+const PALETTE = ['#2f54eb','#4c6ef5','#7c96ff','#FA4616','#ff7a45','#1d3fd6','#9bb0ff','#ff9a66'];
+let balls = [], angle = 0, isSpinning = false, spinStart = 0, spinEnd = 0;
+let lastTick = 0, lastClick = 0, lastFrame = 0, pulse = null, fly = null, resetAnim = null;
+
+function targetBalls() {
+  if (pool.length === 0) return 0;
+  const ratio = pool.length / Math.max(1, masterList.length);
+  return Math.min(pool.length, Math.max(1, Math.round(ratio * MAX_BALLS)));
+}
+function newBall(i, centered) {
+  const a = Math.random() * Math.PI * 2, r = Math.random() * (R - 30), d = Math.random() * Math.PI * 2;
+  return {x: CX + Math.cos(a)*r, y: CY + Math.sin(a)*r, vx: Math.cos(d), vy: Math.sin(d),
+          rad: 6 + Math.random() * 6, color: PALETTE[i % PALETTE.length]};
+}
+function makeBalls() {
+  balls = [];
+  const n = targetBalls();
+  for (let i = 0; i < n; i++) balls.push(newBall(i));
+}
+
+function updateBalls(target) {
+  let hits = 0;
+  for (const b of balls) {
+    const m = Math.hypot(b.vx, b.vy) || 1;
+    const nm = m + (target - m) * 0.08;
+    b.vx *= nm / m; b.vy *= nm / m;
+    if (target > 2) { b.vx += (Math.random()-.5)*0.5; b.vy += (Math.random()-.5)*0.5; }
+    b.x += b.vx; b.y += b.vy;
+    const dx = b.x - CX, dy = b.y - CY, dist = Math.hypot(dx, dy), max = R - 8 - b.rad;
+    if (dist > max) {
+      const nx = dx/dist, ny = dy/dist;
+      b.x = CX + nx*max; b.y = CY + ny*max;
+      const dot = b.vx*nx + b.vy*ny;
+      b.vx -= 2*dot*nx; b.vy -= 2*dot*ny;
+      hits++;
+    }
+  }
+  return hits;
+}
+
+/* tray geometry */
+function trayMetrics() {
+  const cols = 4, pad = 10, rows = Math.max(1, Math.ceil(masterList.length / cols));
+  const sp = Math.min((TW - 2*pad) / cols, (TH - 2*pad) / rows);
+  return {cols, pad, sp, r: sp * 0.38};
+}
+function slotPos(i) {
+  const m = trayMetrics();
+  const col = i % m.cols, row = Math.floor(i / m.cols);
+  const x0 = TX + (TW - m.cols * m.sp) / 2;
+  return {x: x0 + m.sp * (col + 0.5), y: TY + TH - m.pad - m.sp * (row + 0.5), r: m.r};
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+const lerp = (a, b, t) => a + (b - a) * t;
+
+function render(now) {
+  const dt = Math.min(50, now - lastFrame || 16); lastFrame = now;
+  ctx.setTransform(rs, 0, 0, rs, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  let target = 0.6, spinRate = 0.0006;
+  if (resetAnim) { target = 2; spinRate = 0.005; }
+  if (isSpinning) {
+    const remaining = spinEnd - now;
+    if (remaining <= 0) finalizeDraw(now);
+    else {
+      const ramp = Math.min(1, (now - spinStart) / 500) * Math.min(1, remaining / 800);
+      target = 0.6 + 4.4 * ramp;
+      spinRate = 0.0006 + 0.011 * ramp;
+      // louder whirr, speeds up and slows down with the wheel
+      const interval = 140 - 80 * ramp;
+      if (now - lastTick > interval) { beep(85 + 85 * ramp + Math.random()*30, 0.09, 'triangle', 0.22); lastTick = now; }
+    }
+  }
+  angle += spinRate * dt;
+
+  // glow
+  const glow = ctx.createRadialGradient(CX, CY, R * 0.3, CX, CY, R * 1.5);
+  glow.addColorStop(0, 'rgba(59,91,255,0.22)'); glow.addColorStop(1, 'rgba(59,91,255,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  // disc
+  const disc = ctx.createRadialGradient(CX, CY - 30, 10, CX, CY, R);
+  disc.addColorStop(0, '#16204a'); disc.addColorStop(1, '#0a0f24');
+  ctx.fillStyle = disc; ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2); ctx.fill();
+
+  // balls
+  const hits = updateBalls(target);
+  if (isSpinning && hits > 0 && now - lastClick > 45) {
+    beep(110 + Math.random()*90, 0.05, 'triangle', 0.14); lastClick = now;
+  }
+  for (const b of balls) { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.rad, 0, Math.PI*2); ctx.fill(); }
+
+  // rotating gradient ring + dots
+  ctx.save(); ctx.translate(CX, CY); ctx.rotate(angle);
+  let stroke;
+  if (ctx.createConicGradient) {
+    stroke = ctx.createConicGradient(0, 0, 0);
+    [[0,'#3b5bff'],[0.2,'#7f9bff'],[0.36,'#fff1e8'],[0.5,'#ff7a45'],[0.65,'#FA4616'],[0.82,'#ff7a45'],[0.93,'#fff1e8'],[1,'#3b5bff']]
+      .forEach(([o, c]) => stroke.addColorStop(o, c));
+  } else stroke = '#3b5bff';
+  ctx.strokeStyle = stroke; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI*2); ctx.stroke();
+  const dots = 24;
+  for (let i = 0; i < dots; i++) {
+    const a = i / dots * Math.PI * 2;
+    ctx.fillStyle = i % 6 === 0 ? '#FA4616' : 'rgba(157,178,255,0.45)';
+    ctx.beginPath(); ctx.arc(Math.cos(a) * (R + 14), Math.sin(a) * (R + 14), i % 6 === 0 ? 3 : 1.8, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // pulse
+  if (pulse) {
+    const p = (now - pulse) / 800;
+    if (p >= 1) pulse = null;
+    else {
+      ctx.strokeStyle = 'rgba(255,122,69,' + (0.7 * (1 - p)).toFixed(3) + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(CX, CY, R + 6 + p * 34, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+
+  // tray of used balls
+  ctx.fillStyle = 'rgba(7,11,22,0.7)'; roundRect(TX, TY, TW, TH, 14); ctx.fill();
+  ctx.strokeStyle = '#243158'; ctx.lineWidth = 1.5; roundRect(TX, TY, TW, TH, 14); ctx.stroke();
+  ctx.fillStyle = '#8d99b8'; ctx.font = '600 10px system-ui, sans-serif'; ctx.textAlign = 'center';
+  const tm = trayMetrics();
+  let trayCount = history.length;
+  if (resetAnim) {
+    const rt = now - resetAnim.t0;
+    trayCount = 0;
+    for (const it of resetAnim.items) {
+      if (rt - it.delay < 0) {
+        trayCount++;
+        ctx.fillStyle = it.color;
+        ctx.beginPath(); ctx.arc(it.slot.x, it.slot.y, tm.r, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  } else {
+    const landed = fly ? fly.idx : history.length;
+    for (let i = 0; i < landed; i++) {
+      const s = slotPos(i);
+      ctx.fillStyle = usedColors[i] || PALETTE[i % PALETTE.length];
+      ctx.beginPath(); ctx.arc(s.x, s.y, tm.r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#8d99b8';
+  ctx.fillText('DRAWN  ' + trayCount, TX + TW/2, TY - 9);
+
+  // selected ball: lifts out, pops, then drops into the tray
+  if (fly) {
+    const t = now - fly.t0, slot = slotPos(fly.idx);
+    let x, y, r;
+    if (t < 700) {
+      const p = easeOut(t / 700);
+      x = lerp(fly.from.x, CX, p); y = lerp(fly.from.y, CY, p); r = lerp(fly.from.rad, 28, p);
+    } else if (t < 1200) {
+      if (!fly.revealed) { fly.revealed = true; pulse = now; successSound(); updateUI(); }
+      x = CX; y = CY; r = 28 * (1 + 0.07 * Math.sin((t - 700) / 500 * Math.PI));
+    } else if (t < 1900) {
+      const p = easeInOut((t - 1200) / 700);
+      x = lerp(CX, slot.x, p); y = lerp(CY, slot.y, p); r = lerp(28, slot.r, p);
+    } else {
+      fly = null; plinkSound(); updateUI();
+    }
+    if (fly) {
+      ctx.globalAlpha = 0.25; ctx.fillStyle = fly.color;
+      ctx.beginPath(); ctx.arc(x, y, r * 1.8, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  // reset: every used ball flies from the tray back into the wheel
+  if (resetAnim) {
+    const rt = now - resetAnim.t0;
+    for (const it of resetAnim.items) {
+      const local = rt - it.delay;
+      if (local < 0) continue;
+      if (local < RESET_FLIGHT) {
+        const p = easeInOut(local / RESET_FLIGHT);
+        const x = lerp(it.slot.x, it.dest.x, p), y = lerp(it.slot.y, it.dest.y, p), r = lerp(tm.r, it.rad, p);
+        ctx.fillStyle = it.color;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+      } else if (!it.done) {
+        it.done = true;
+        if (balls.length < targetBalls()) {
+          const d = Math.random() * Math.PI * 2;
+          balls.push({x: it.dest.x, y: it.dest.y, vx: Math.cos(d), vy: Math.sin(d), rad: it.rad, color: it.color});
+        }
+        if (now - lastClick > 50) { beep(200 + Math.random()*60, 0.07, 'sine', 0.14); lastClick = now; }
+      }
+    }
+    if (rt >= resetAnim.dur) {
+      while (balls.length < targetBalls()) balls.push(newBall(balls.length));
+      resetAnim = null; pulse = now; updateUI();
+    }
+  }
+  requestAnimationFrame(render);
+}
+
+/* ---------- Game logic ---------- */
+function updateUI() {
+  document.getElementById('countRemaining').textContent = pool.length;
+  document.getElementById('countTotal').textContent = masterList.length;
+  const hiding = !!fly && !fly.revealed;
+  setBanner(hiding ? (history.length > 1 ? history[history.length - 2] : '') : (lastDraw || ''));
+  const hl = document.getElementById('historyList'); hl.innerHTML = '';
+  (hiding ? history.slice(0, -1) : history).forEach(w => {
+    const s = document.createElement('span'); s.className = 'history-tag'; s.textContent = w; hl.appendChild(s);
+  });
+  document.getElementById('btnDraw').disabled = pool.length === 0 || isSpinning || !!fly || !!resetAnim;
+  const sb = document.getElementById('btnSound');
+  sb.setAttribute('aria-checked', String(soundOn)); sb.classList.toggle('on', soundOn);
+  sb.querySelector('.sw-label').textContent = soundOn ? 'On' : 'Off';
+}
+
+function resetGameData() {
+  pool = [...masterList]; history = []; usedColors = []; lastDraw = '';
+  pulse = null; fly = null; isSpinning = false; resetAnim = null;
+  makeBalls(); save(); updateUI();
+}
+
+function drawWord() {
+  if (pool.length === 0 || isSpinning || fly || resetAnim) return;
+  isSpinning = true;
+  spinStart = performance.now(); spinEnd = spinStart + 2400;
+  updateUI();
+}
+
+function finalizeDraw(now) {
+  isSpinning = false;
+  if (pool.length === 0) { updateUI(); return; }
+  const i = Math.floor(Math.random() * pool.length);
+  const word = pool.splice(i, 1)[0];
+  history.push(word); lastDraw = word;
+
+  // pick a ball in the wheel to "be" the selection
+  const tgt = targetBalls();
+  let from;
+  if (balls.length) {
+    const bi = Math.floor(Math.random() * balls.length);
+    const b = balls[bi];
+    from = {x: b.x, y: b.y, rad: b.rad, color: b.color};
+    if (balls.length > tgt) balls.splice(bi, 1);      // ball leaves the wheel for good
+  } else from = {x: CX, y: CY, rad: 9, color: PALETTE[0]};
+  while (balls.length > tgt) balls.splice(Math.floor(Math.random() * balls.length), 1);
+
+  usedColors[history.length - 1] = from.color;
+  fly = {t0: now, from, color: from.color, idx: history.length - 1, revealed: false};
+  save(); updateUI();
+}
+
+/* ---------- Controls ---------- */
+document.getElementById('btnDraw').onclick = drawWord;
+function startReset() {
+  if (resetAnim) return;
+  if (history.length === 0 || isSpinning || fly) { resetGameData(); return; }
+  const n = history.length, stagger = Math.min(45, 1100 / n);
+  const items = history.map((_, i) => {
+    const a = Math.random() * Math.PI * 2, r = Math.random() * (R - 30);
+    return {color: usedColors[i] || PALETTE[i % PALETTE.length], slot: slotPos(i),
+            dest: {x: CX + Math.cos(a)*r, y: CY + Math.sin(a)*r}, rad: 6 + Math.random()*6,
+            delay: (n - 1 - i) * stagger, done: false};
+  });
+  pool = [...masterList]; history = []; usedColors = []; lastDraw = ''; pulse = null;
+  resetAnim = {t0: performance.now(), items, dur: (n - 1) * stagger + RESET_FLIGHT + 50};
+  save(); updateUI();
+}
+// Two-tap confirm (browser confirm() popups are blocked on some hosts)
+let resetArmed = false, resetTimer = null;
+const btnReset = document.getElementById('btnReset');
+function disarmReset() { resetArmed = false; clearTimeout(resetTimer); btnReset.textContent = 'Reset'; btnReset.classList.remove('armed'); }
+btnReset.onclick = () => {
+  if (resetAnim) return;
+  if (history.length === 0) { startReset(); return; }
+  if (!resetArmed) {
+    resetArmed = true; btnReset.textContent = 'Tap again'; btnReset.classList.add('armed');
+    resetTimer = setTimeout(disarmReset, 3000);
+    return;
+  }
+  disarmReset(); startReset();
+};
+document.getElementById('btnSound').onclick = () => { soundOn = !soundOn; save(); updateUI(); if (soundOn) beep(660, 0.1, 'sine', 0.15); };
+/* ---------- Word list table ---------- */
+const tbody = document.getElementById('listBody');
+const editorMsg = document.getElementById('editorMsg');
+function addRow(word = '', q = '', a = '') {
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td class="w"><input data-col="0" placeholder="Word" spellcheck="false" autocomplete="off"></td>' +
+                 '<td class="q"><input data-col="1" placeholder="Question" spellcheck="false" autocomplete="off"></td>' +
+                 '<td class="n"><input data-col="2" placeholder="Answer" spellcheck="false" autocomplete="off"></td>' +
+                 '<td class="x"><button class="rowdel" tabindex="-1" title="Remove row">&times;</button></td>';
+  const ins = tr.querySelectorAll('input'); ins[0].value = word; ins[1].value = q; ins[2].value = a;
+  tr.querySelector('.rowdel').onclick = () => { tr.remove(); ensureBlankRow(); };
+  tbody.appendChild(tr);
+  return tr;
+}
+function ensureBlankRow() {
+  const last = tbody.lastElementChild;
+  if (!last || [...last.querySelectorAll('input')].some(i => i.value.trim())) addRow();
+}
+function setTable(entries) { tbody.innerHTML = ''; entries.forEach(e => addRow(e.word, e.q, e.a)); ensureBlankRow(); }
+function readTable() {
+  return [...tbody.children].map(tr => { const i = tr.querySelectorAll('input'); return {word: i[0].value.trim(), q: i[1].value.trim(), a: i[2].value.trim()}; })
+    .filter(e => e.word);
+}
+const tableFromGame = () => masterList.map(w => ({word: w, q: qMap[w] || '', a: noteMap[w] || ''}));
+function parseTSV(text) {              // tab-separated, with "quoted" cells like Excel produces
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"' && cell === '') q = true;
+    else if (c === '\t') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+tbody.addEventListener('input', ensureBlankRow);
+tbody.addEventListener('paste', e => {
+  const input = e.target.closest && e.target.closest('input'); if (!input) return;
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if (!/[\t\r\n]/.test(text.replace(/[\r\n]+$/, ''))) return;        // single value: normal paste
+  e.preventDefault();
+  const rows = parseTSV(text).map(r => r.map(c => c.replace(/[\r\n]+/g, ' ').trim())).filter(r => r.some(Boolean));
+  // Optional header row (Unit/Word, then Note/Answer/Question/Supplement ... columns) is skipped.
+  // A 2-column paste means Word + Answer (the old "Note" column), unless the header says Question.
+  let twoColKind = 'a';
+  if (rows.length && /^(unit|units|word|words)$/i.test(rows[0][0]) && rows[0].slice(1).every(c => !c || /^(notes?|answers?|questions?|supplement(al)?[\s_-]*(question|answer)s?|bonus.*)$/i.test(c))) {
+    const hdr = rows.shift(); if (hdr.length === 2 && /question/i.test(hdr[1])) twoColKind = 'q';
+  }
+  if (!rows.length) return;
+  const r0 = [...tbody.children].indexOf(input.closest('tr')), c0 = +input.dataset.col;
+  if (r0 === 0 && c0 === 0) {                                         // pasted at the very top: replace everything
+    setTable(rows.map(r => r.length === 2 ? (twoColKind === 'q' ? {word: r[0], q: r[1], a: ''} : {word: r[0], q: '', a: r[1]})
+                                           : {word: r[0] || '', q: r[1] || '', a: r[2] || ''}));
+    editorMsg.textContent = 'Pasted ' + rows.length + ' rows (replaced the table). Click Save & Apply List to use them.';
+  } else {                                                            // pasted elsewhere: overwrite from this cell
+    rows.forEach((r, k) => {
+      while (tbody.children.length <= r0 + k) addRow();
+      const ins = tbody.children[r0 + k].querySelectorAll('input');
+      if (c0 === 0 && r.length === 2) { ins[0].value = r[0]; ins[twoColKind === 'q' ? 1 : 2].value = r[1]; }
+      else r.slice(0, 3 - c0).forEach((v, j) => { ins[c0 + j].value = v; });
+    });
+    ensureBlankRow();
+    editorMsg.textContent = 'Pasted ' + rows.length + ' rows. Click Save & Apply List to use them.';
+  }
+});
+document.getElementById('btnAddRow').onclick = () => { const tr = addRow(); tr.querySelector('input').focus(); tr.scrollIntoView({block: 'nearest'}); };
+document.getElementById('btnClearTable').onclick = () => { setTable([]); editorMsg.textContent = ''; tbody.querySelector('input').focus(); };
+document.getElementById('btnSave').onclick = () => {
+  const entries = readTable();
+  if (!entries.length) { editorMsg.textContent = 'Please enter at least one word.'; return; }
+  editorMsg.textContent = '';
+  masterList = entries.map(e => e.word);
+  noteMap = {}; qMap = {};
+  entries.forEach(e => { if (e.word in noteMap || e.word in qMap) return; if (e.a) noteMap[e.word] = e.a; if (e.q) qMap[e.word] = e.q; });
+  resetGameData();
+  closeOptions();
+};
+
+/* Marquee bulbs: the count follows the banner size. One continuous loop numbered clockwise from the
+   top-left corner. Even = orange phase, odd = blue, so the colours alternate all the way round.
+   Top/bottom rows (T) and side columns (S) are both odd, so all four corners share the same phase. */
+const bannerEl = document.getElementById('banner');
+let bulbKey = '';
+function buildBulbs() {
+  const w = bannerEl.clientWidth, hh = bannerEl.clientHeight;
+  if (!w || !hh) return;
+  const bs = Math.max(10, Math.min(20, Math.round(w / 130))), pitch = bs * (1.7 + (bs - 10) * .05);
+  const odd = n => { n = Math.max(1, Math.round(n)); return n % 2 ? n : n + 1; };
+  const T = odd((w - 18 - bs) / pitch + 1), S = odd((hh - 18 - bs) / pitch - 1);
+  const key = bs + ':' + T + ':' + S;
+  if (key === bulbKey) return;
+  bulbKey = key; bannerEl.style.setProperty('--bs', bs + 'px');
+  const rows = {
+    top:    {n: T, idx: j => j},
+    right:  {n: S, idx: j => T + j},
+    bottom: {n: T, idx: j => T + S + (T - 1 - j)},
+    left:   {n: S, idx: j => 2 * T + S + (S - 1 - j)}
+  };
+  for (const k in rows) {
+    const c = bannerEl.querySelector('.bulbs.' + k);
+    c.textContent = '';
+    for (let j = 0; j < rows[k].n; j++) {
+      const s = document.createElement('span');
+      s.className = rows[k].idx(j) % 2 === 0 ? 'e' : 'o';
+      c.appendChild(s);
+    }
+  }
+}
+buildBulbs();
+if (window.ResizeObserver) new ResizeObserver(buildBulbs).observe(bannerEl); else window.addEventListener('resize', buildBulbs);
+const LIGHT_LABELS = ['ON', 'DIM', 'OFF'], LIGHT_NEXT = ['dim', 'turn off', 'turn on'], LIGHT_NOW = ['on', 'dimmed', 'off'];
+let lightMode = 0;
+try { lightMode = Math.max(0, Math.min(2, parseInt(localStorage.getItem('bingoLights'), 10) || 0)); } catch (e) {}
+const lightSw = document.getElementById('lightSwitch');
+function applyLights() {
+  bannerEl.classList.toggle('lights-dim', lightMode === 1);
+  bannerEl.classList.toggle('lights-off', lightMode === 2);
+  lightSw.dataset.mode = lightMode;
+  document.getElementById('lcState').textContent = LIGHT_LABELS[lightMode];
+  lightSw.setAttribute('aria-label', 'Marquee lights: ' + LIGHT_NOW[lightMode] + '. Press to ' + LIGHT_NEXT[lightMode] + '.');
+}
+lightSw.onclick = () => {
+  lightMode = (lightMode + 1) % 3; applyLights();
+  try { localStorage.setItem('bingoLights', String(lightMode)); } catch (e) {}
+  beep(950, .03, 'square', .06); setTimeout(() => beep(150, .08, 'triangle', .12), 28);   // little mechanical clack
+};
+applyLights();
+let flashT = null;
+const bonusEl = document.getElementById('bonus');
+document.getElementById('bonusA').addEventListener('click', () => bonusEl.classList.toggle('open'));
+function setBonus(text, idle) {
+  const q = idle ? '' : (qMap[text] || ''), a = idle ? '' : (noteMap[text] || '');
+  const any = masterList.some(w => qMap[w] || noteMap[w]);
+  bonusEl.hidden = !any;
+  bonusEl.classList.remove('open', 'pop');
+  bonusEl.classList.toggle('idle', !q && !a);
+  bonusEl.classList.toggle('noans', !a);
+  const qEl = document.getElementById('bonusQ');
+  if (q || a) {
+    // a unit with only an answer (an old-style note) shows under its name
+    document.getElementById('bonusTag').textContent = q ? 'Bonus question' : 'Unit note';
+    qEl.textContent = q || text;
+    bonusEl.style.setProperty('--qlen', Math.max(14, (q || text).length));
+    document.getElementById('bonusAText').textContent = a;
+    bonusEl.style.setProperty('--alen', Math.max(12, a.length));
+    void bonusEl.offsetWidth; bonusEl.classList.add('pop');
+  } else {
+    document.getElementById('bonusTag').textContent = 'Bonus question';
+    qEl.textContent = 'Some words come with a bonus question. Watch this space!';
+    bonusEl.style.setProperty('--qlen', 40);
+  }
+}
+/* ---------- Latest-draw banner ---------- */
+let bannerCur = null;
+function setBanner(text) {
+  const idle = !text, t = text || 'READY';
+  if (bannerCur === t) return;
+  bannerCur = t;
+  setBonus(text, idle);
+  const el = document.getElementById('bannerWord');
+  el.textContent = t;
+  el.style.setProperty('--fs', Math.min(5, Math.max(2.2, 34 / t.length)));
+  el.style.setProperty('--len', Math.max(5, t.length));
+  el.classList.toggle('idle', idle);
+  el.classList.remove('pop'); void el.offsetWidth;
+  if (!idle) el.classList.add('pop');
+  if (!idle) {
+    const b = document.getElementById('banner');
+    b.classList.add('flash'); clearTimeout(flashT);
+    flashT = setTimeout(() => b.classList.remove('flash'), 1800);
+  }
+}
+
+/* ---------- Options overlay ---------- */
+const optModal = document.getElementById('optionsModal'), btnOptions = document.getElementById('btnOptions');
+const optViews = {menu: document.getElementById('viewMenu'), edit: document.getElementById('viewEdit'), help: document.getElementById('viewHelp')};
+const optTitle = document.getElementById('optTitle'), optBack = document.getElementById('optBack');
+const OPT_TITLES = {menu: 'Options', edit: 'Edit Word List', help: 'Instructions'};
+let optView = 'menu';
+function showView(v) {
+  optView = v;
+  for (const k in optViews) optViews[k].hidden = k !== v;
+  optTitle.textContent = OPT_TITLES[v];
+  optBack.hidden = v === 'menu';
+  document.getElementById('modalCard').classList.toggle('wide', v === 'edit');
+  if (v === 'edit') { setTable(tableFromGame()); editorMsg.textContent = ''; }
+}
+function openOptions() { showView('menu'); optModal.hidden = false; document.getElementById('btnSound').focus(); }
+function closeOptions() { optModal.hidden = true; btnOptions.focus(); }
+btnOptions.onclick = openOptions;
+document.getElementById('optClose').onclick = closeOptions;
+optBack.onclick = () => showView('menu');
+document.getElementById('btnEdit').onclick = () => showView('edit');
+document.getElementById('btnHelp').onclick = () => showView('help');
+document.getElementById('btnCancelEdit').onclick = () => showView('menu');
+document.getElementById('btnHelpDone').onclick = closeOptions;
+// Clicking outside closes the overlay, except while editing (so a big paste isn't lost by accident)
+optModal.addEventListener('click', e => { if (e.target === optModal && optView !== 'edit') closeOptions(); });
+// Escape goes back one step, then closes
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !optModal.hidden) { if (optView === 'menu') closeOptions(); else showView('menu'); } });
+
+/* ---------- Bingo card PDF generator (no libraries) ---------- */
+const WB=[278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 278, 333, 556, 556, 556, 556, 280, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 611, 556, 278, 333, 333, 365, 556, 834, 834, 834, 611, 722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 556, 556, 556, 556, 556, 278, 278, 278, 278, 611, 611, 611, 611, 611, 611, 611, 584, 611, 611, 611, 611, 611, 556, 611, 556],WR=[278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 278, 333, 556, 556, 556, 556, 260, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 556, 537, 278, 333, 333, 365, 556, 834, 834, 834, 611, 667, 667, 667, 667, 667, 667, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 500, 556, 556, 556, 556, 278, 278, 278, 278, 556, 556, 556, 556, 556, 556, 556, 584, 611, 556, 556, 556, 556, 500, 556, 500];
+const CARD_COUNT = 40;
+const pdfSan = s => String(s).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/\s+/g, ' ').trim()
+  .replace(/[^\x20-\x7e\xa0-\xff]/g, '?');
+function tw(s, size, bold) { const T = bold ? WB : WR; let w = 0; for (const ch of s) w += T[ch.charCodeAt(0) - 32] || 0; return w * size / 1000; }
+const pdfEsc = s => s.replace(/[\\()]/g, '\\$&');
+const pn = n => (Math.round(n * 100) / 100).toString();
+function hexRGB(h) { return [1, 3, 5].map(i => pn(parseInt(h.substr(i, 2), 16) / 255)).join(' '); }
+function shuffled(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function wrapWords(text, size, maxW) {
+  const lines = []; let cur = '';
+  for (const t of text.split(' ')) {
+    const tryL = cur ? cur + ' ' + t : t;
+    if (!cur || tw(tryL, size, true) <= maxW) cur = tryL; else { lines.push(cur); cur = t; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+function fitWord(text, maxW, maxH) {
+  let size = 21, lines;
+  for (; size >= 8; size -= .5) {
+    lines = wrapWords(text, size, maxW);
+    if (lines.length * size * 1.1 <= maxH && lines.every(l => tw(l, size, true) <= maxW)) break;
+  }
+  if (size < 8) { size = 8; lines = wrapWords(text, 8, maxW); }
+  return {size, lines};
+}
+
+function cardOps(top, num, words) {
+  // top = distance (pt) from the top of the page to the top of this half-sheet; page is 612 x 792
+  const Y = y => 792 - y;
+  const o = [];
+  const X0 = 36, W = 540, H = 320, CY = top, B = 2.25, R = 9;   // 0.5in margins all round
+  const rr = (x, y, w, h, r) => { // rounded rect path, y = top edge in top-down coords
+    const k = r * .5523, yb = Y(y + h), yt = Y(y);
+    return [`${pn(x + r)} ${pn(yb)} m`, `${pn(x + w - r)} ${pn(yb)} l`, `${pn(x + w - r + k)} ${pn(yb)} ${pn(x + w)} ${pn(yb + r - k)} ${pn(x + w)} ${pn(yb + r)} c`,
+      `${pn(x + w)} ${pn(yt - r)} l`, `${pn(x + w)} ${pn(yt - r + k)} ${pn(x + w - r + k)} ${pn(yt)} ${pn(x + w - r)} ${pn(yt)} c`,
+      `${pn(x + r)} ${pn(yt)} l`, `${pn(x + r - k)} ${pn(yt)} ${pn(x)} ${pn(yt - r + k)} ${pn(x)} ${pn(yt - r)} c`,
+      `${pn(x)} ${pn(yb + r)} l`, `${pn(x)} ${pn(yb + r - k)} ${pn(x + r - k)} ${pn(yb)} ${pn(x + r)} ${pn(yb)} c h`].join('\n');
+  };
+  const text = (s, x, y, size, bold, color, spacing) => `BT /${bold ? 'F1' : 'F2'} ${size} Tf ${pn(spacing || 0)} Tc ${hexRGB(color)} rg 1 0 0 1 ${pn(x)} ${pn(Y(y))} Tm (${pdfEsc(s)}) Tj ET`;
+  const ctext = (s, cx, y, size, bold, color, sp) => { const w = tw(s, size, bold) + (sp || 0) * (s.length - 1); return text(s, cx - w / 2, y, size, bold, color, sp); };
+
+  const ix = X0 + B, iw = W - 2 * B, titleH = 37, lettersH = 28;
+  const gy = CY + B + titleH + lettersH, gh = H - 2 * B - titleH - lettersH, cw = iw / 5, ch = gh / 5;
+
+  o.push('q', rr(X0, CY, W, H, R), 'W n');                                   // clip to rounded card
+  o.push(hexRGB('#ffffff') + ' rg', `${X0} ${pn(Y(CY + H))} ${W} ${H} re f`);
+  o.push(hexRGB('#0021A5') + ' rg', `${X0} ${pn(Y(CY + B + titleH))} ${W} ${pn(B + titleH)} re f`);
+  o.push(hexRGB('#FA4616') + ' rg', `${X0} ${pn(Y(gy))} ${W} ${lettersH} re f`);
+  o.push(hexRGB('#fff1e8') + ' rg', `${pn(ix + 2 * cw)} ${pn(Y(gy + 3 * ch))} ${pn(cw)} ${pn(ch)} re f`); // FREE tint
+  o.push(hexRGB('#c3cbe8') + ' RG 1.1 w');
+  for (let i = 1; i < 5; i++) {
+    o.push(`${pn(ix + i * cw)} ${pn(Y(gy))} m ${pn(ix + i * cw)} ${pn(Y(gy + gh))} l S`);
+    o.push(`${pn(ix)} ${pn(Y(gy + i * ch))} m ${pn(ix + iw)} ${pn(Y(gy + i * ch))} l S`);
+  }
+  o.push(text('TRANSPORT BINGO', X0 + 15.8, CY + B + titleH / 2 + 7.9, 22, true, '#ffffff', 3.08));
+  const numS = 'CARD ' + String(num).padStart(2, '0');
+  o.push(text(numS, X0 + W - 15.8 - (tw(numS, 10, true) + 1.6 * (numS.length - 1)), CY + B + titleH / 2 + 3.6, 10, true, '#ffd3c0', 1.6));
+  'BINGO'.split('').forEach((c, i) => o.push(ctext(c, ix + (i + .5) * cw, gy - lettersH / 2 + 7.2, 20, true, '#ffffff', 0)));
+  let wi = 0;
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+    const cx = ix + (c + .5) * cw, cyTop = gy + r * ch;
+    if (r === 2 && c === 2) { // FREE
+      const sx = cx - 11.25, sy = cyTop + ch / 2 - 21, s = 22.5 / 24;
+      const pts = [[12,1.5],[15,8.7],[22.8,9.3],[16.9,14.3],[18.8,21.9],[12,17.8],[5.2,21.9],[7.1,14.3],[1.2,9.3],[9,8.7]];
+      o.push(hexRGB('#FA4616') + ' rg', pts.map((p, i) => `${pn(sx + p[0] * s)} ${pn(Y(sy + p[1] * s))} ${i ? 'l' : 'm'}`).join(' ') + ' h f');
+      o.push(ctext('FREE', cx, cyTop + ch / 2 + 17.5, 17, true, '#FA4616', 2));
+      continue;
+    }
+    const f = fitWord(words[wi++], cw - 11, ch - 8), lh = f.size * 1.1, bt = cyTop + (ch - f.lines.length * lh) / 2;
+    f.lines.forEach((l, i) => o.push(ctext(l, cx, bt + i * lh + lh / 2 + f.size * .36, f.size, true, '#0b1752', 0)));
+  }
+  o.push('Q');
+  o.push(hexRGB('#0021A5') + ' RG ' + B + ' w', rr(X0 + B / 2, CY + B / 2, W - B, H - B, R - B / 2), 'S');   // border
+  o.push(ctext('Cross off each unit as it is called.', 306, CY + H + 3 + 10.5, 8, false, '#7d88ad', 0));
+  return o.join('\n');
+}
+
+function buildCardsPDF() {
+  const uniq = [...new Set(masterList.map(pdfSan).filter(Boolean))];
+  if (uniq.length < 24) return {error: 'The word list needs at least 24 different words to fill a card (it has ' + uniq.length + '). Add more in Edit Word List.'};
+  const seen = new Set(), cards = [];
+  while (cards.length < CARD_COUNT) {
+    const w = shuffled(uniq).slice(0, 24), key = w.join('|');
+    if (!seen.has(key)) { seen.add(key); cards.push(w); }
+  }
+  const objs = [];            // objs[i] = body string of object i+1
+  const add = body => objs.push(body) ;
+  add('<< /Type /Catalog /Pages 2 0 R >>');
+  add('PAGES');
+  add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  const kids = [];
+  for (let p = 0; p < CARD_COUNT / 2; p++) {
+    let s = cardOps(36, p * 2 + 1, cards[p * 2]) + '\n' + cardOps(420, p * 2 + 2, cards[p * 2 + 1]);
+    s += '\nq ' + hexRGB('#9aa4c4') + ' RG 1.1 w [5 3] 0 d 36 396 m 576 396 l S Q';
+    s += '\nq ' + hexRGB('#ffffff') + ' rg 40 391 56 10 re f Q\nBT /F2 8.5 Tf 0 Tc ' + hexRGB('#7d88ad') + ' rg 1 0 0 1 46 393.5 Tm (- cut here -) Tj ET';
+    add(`<< /Length ${s.length} >>\nstream\n${s}\nendstream`);
+    const cid = objs.length;
+    add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${cid} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`);
+    kids.push(objs.length + ' 0 R');
+  }
+  objs[1] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${kids.length} >>`;
+  let out = '%PDF-1.4\n'; const offs = [];
+  objs.forEach((b, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${b}\nendobj\n`; });
+  const xr = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info << /Title (Transport Bingo Cards) >> >>\nstartxref\n${xr}\n%%EOF`;
+  const bytes = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255;
+  return {blob: new Blob([bytes], {type: 'application/pdf'}), pages: kids.length, cards: CARD_COUNT};
+}
+let cardsUrl = null;
+document.getElementById('btnCards').onclick = async () => {
+  const msg = document.getElementById('cardsMsg');
+  msg.className = 'cards-msg';
+  let res; try { res = buildCardsPDF(); } catch (err) { res = {error: 'Sorry, the cards could not be built (' + err.message + ').'}; }
+  if (res.error) { msg.textContent = res.error; return; }
+  const note = 'Made ' + res.cards + ' cards on ' + res.pages + ' pages, two per page. Print at 100% (Actual size) and cut on the dashed line.';
+  // Inside claude.ai the page must ask the viewer to save; on a normal host a plain download works.
+  let dl = null;
+  try { if (window.claude && window.claude.use) dl = await window.claude.use('downloads'); } catch (e) { dl = null; }
+  if (dl) {
+    try { await dl.save({filename: 'transport-bingo-cards.pdf', data: res.blob}); msg.textContent = note; }
+    catch (err) { msg.textContent = err && err.code === 'declined' ? 'Download cancelled.' : 'The download was blocked here. Open this page from your own site (tiny.host) to download.'; }
+    return;
+  }
+  if (cardsUrl) URL.revokeObjectURL(cardsUrl);
+  cardsUrl = URL.createObjectURL(res.blob);
+  const a = document.createElement('a'); a.href = cardsUrl; a.download = 'transport-bingo-cards.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+  msg.textContent = note + ' ';
+  const l = document.createElement('a'); l.href = cardsUrl; l.target = '_blank'; l.textContent = 'Open PDF'; msg.appendChild(l);
+};
+
+/* ---------- Wheel balls pop out for the celebration, then flow back ---------- */
+const fx = document.getElementById('ballFx'), fxc = fx.getContext('2d');
+let fxBalls = [], fxRaf = 0, fxLast = 0, fxLastPlink = 0;
+function sizeFx() { const d = Math.min(window.devicePixelRatio || 1, 2); fx.width = innerWidth * d; fx.height = innerHeight * d; fxc.setTransform(d, 0, 0, d, 0, 0); }
+function wheelToScreen(x, y, rad) { const r = canvas.getBoundingClientRect(), s = r.width / W; return {x: r.left + x * s, y: r.top + y * s, r: rad * s}; }
+function landBall(b) {
+  const d = Math.random() * Math.PI * 2;
+  balls.push({x: b.dest.x, y: b.dest.y, vx: Math.cos(d), vy: Math.sin(d), rad: b.rad, color: b.color});
+}
+function landAll() { fxBalls.forEach(b => { if (b.state !== 'landed') landBall(b); }); fxBalls = []; stopFx(); }
+function stopFx() { cancelAnimationFrame(fxRaf); fxRaf = 0; fxc.clearRect(0, 0, innerWidth, innerHeight); }
+function startFx() { if (!fxRaf) { fxLast = performance.now(); fxRaf = requestAnimationFrame(fxStep); } }
+function ejectBalls() {
+  if (calm || !balls.length) return;
+  landAll(); sizeFx();
+  const stash = balls; balls = [];
+  const wc = wheelToScreen(CX, CY, 0);
+  fxBalls = stash.map(b => {
+    const p = wheelToScreen(b.x, b.y, b.rad), dx = p.x - wc.x, dy = p.y - wc.y, d = Math.hypot(dx, dy) || 1, sp = 140 + Math.random() * 380;
+    return {state: 'out', dest: {x: b.x, y: b.y}, rad: b.rad, color: b.color, x: p.x, y: p.y, base: p.r, r: p.r,
+      vx: dx / d * sp + (Math.random() - .5) * 180, vy: -(420 + Math.random() * 520), delay: Math.random() * 450, t: 0, popped: false};
+  });
+  startFx();
+}
+function returnBalls() {
+  if (!fxBalls.length) return;
+  fxBalls.forEach(b => {
+    const off = b.state === 'gone' || b.y - b.r > innerHeight;
+    if (off) { b.sx = Math.max(24, Math.min(innerWidth - 24, b.x)); b.sy = innerHeight + b.base * 3.4; b.sr = b.base * 3; }
+    else { b.sx = b.x; b.sy = b.y; b.sr = b.r; }
+    b.state = 'in'; b.t = 0; b.delay = 80 + Math.random() * 650;
+  });
+  startFx();
+}
+function fxStep(now) {
+  const dt = Math.min(.05, (now - fxLast) / 1000 || .016); fxLast = now;
+  fxc.clearRect(0, 0, innerWidth, innerHeight);
+  let alive = false;
+  for (const b of fxBalls) {
+    if (b.state === 'landed' || b.state === 'gone') { if (b.state === 'gone') alive = true; continue; }
+    alive = true; b.t += dt * 1000;
+    if (b.state === 'out') {
+      if (b.t >= b.delay) {
+        if (!b.popped) { b.popped = true; if (Math.random() < .25) beep(260 + Math.random() * 360, .07, 'sine', .09); }
+        const tt = (b.t - b.delay) / 1000;
+        b.vy += 1500 * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+        b.r = b.base * (1 + 2.3 * easeOut(Math.min(1, tt / .7)));
+        if (b.y - b.r > innerHeight) { b.state = 'gone'; continue; }
+      }
+    } else if (b.state === 'in') {
+      if (b.t < b.delay) { if (b.sy - b.sr < innerHeight) { /* still on screen: hold */ } else continue; }
+      else {
+        const p = Math.min(1, (b.t - b.delay) / 1000), e = easeInOut(p), ds = wheelToScreen(b.dest.x, b.dest.y, b.rad);
+        b.x = lerp(b.sx, ds.x, e); b.y = lerp(b.sy, ds.y, e) - Math.sin(p * Math.PI) * 70; b.r = lerp(b.sr, ds.r, e);
+        if (p >= 1) {
+          b.state = 'landed'; landBall(b);
+          if (now - fxLastPlink > 70) { beep(220 + Math.random() * 120, .06, 'sine', .1); fxLastPlink = now; }
+          continue;
+        }
+      }
+    }
+    fxc.globalAlpha = .22; fxc.fillStyle = b.color; fxc.beginPath(); fxc.arc(b.x, b.y, b.r * 1.45, 0, 6.2832); fxc.fill();
+    fxc.globalAlpha = 1; fxc.beginPath(); fxc.arc(b.x, b.y, b.r, 0, 6.2832); fxc.fill();
+  }
+  if (!alive || fxBalls.every(b => b.state === 'landed')) { fxBalls = []; stopFx(); return; }
+  fxRaf = requestAnimationFrame(fxStep);
+}
+window.addEventListener('resize', () => { if (fxRaf) sizeFx(); });
+
+/* ---------- Bingo celebration ---------- */
+const bingoOv = document.getElementById('bingoOverlay'), cv = document.getElementById('confetti'), cx = cv.getContext('2d');
+const CONF_COLORS = ['#FA4616','#ff7a45','#2f54eb','#4c6ef5','#9bb0ff','#ffffff','#ffd3c0','#0021A5'];
+let confetti = [], confRaf = 0, confLast = 0, confRain = 0, bingoOpenedAt = 0, bingoTimers = [];
+const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function sizeConf() { const d = Math.min(window.devicePixelRatio || 1, 2); cv.width = innerWidth * d; cv.height = innerHeight * d; cx.setTransform(d, 0, 0, d, 0, 0); }
+let cSize = 1, cSpeed = 1, cCount = 1;   // confetti scales with the screen so it still fills a TV
+function scaleConf() { cSize = Math.min(2.2, Math.max(1, innerWidth / 900)); cSpeed = Math.max(1, innerHeight / 800); cCount = Math.min(2.2, Math.max(1, innerWidth / 900)); }
+function burst(x, y, n, angle, spread, speed) {
+  n = Math.round(n * cCount); speed *= cSpeed;
+  for (let i = 0; i < n; i++) {
+    const a = angle + (Math.random() - .5) * spread, v = speed * (.45 + Math.random() * .75);
+    confetti.push({x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, w: (6 + Math.random() * 8) * cSize, h: (4 + Math.random() * 6) * cSize, rot: Math.random() * 6.28, vr: (Math.random() - .5) * 12,
+      c: CONF_COLORS[Math.floor(Math.random() * CONF_COLORS.length)], life: 0, wob: Math.random() * 6.28, round: Math.random() < .2});
+  }
+}
+function confStep(t) {
+  const dt = Math.min(.04, (t - confLast) / 1000 || .016); confLast = t;
+  cx.clearRect(0, 0, innerWidth, innerHeight);
+  if (confRain > 0) { confRain -= dt; if (Math.random() < dt * 26) burst(Math.random() * innerWidth, -12, 1, Math.PI / 2, .6, 120); }
+  confetti = confetti.filter(p => p.y < innerHeight + 30);
+  for (const p of confetti) {
+    p.life += dt; p.vy += 520 * cSpeed * dt; p.vx *= (1 - 1.1 * dt); p.vy *= (1 - .9 * dt);
+    p.x += (p.vx + Math.sin(p.life * 5 + p.wob) * 30) * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot); cx.scale(1, Math.cos(p.life * 7 + p.wob));
+    cx.fillStyle = p.c;
+    if (p.round) { cx.beginPath(); cx.arc(0, 0, p.w / 2.2, 0, 6.28); cx.fill(); } else cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    cx.restore();
+  }
+  confRaf = requestAnimationFrame(confStep);
+}
+function bingoSound() {
+  if (!soundOn) return;
+  [[392,0],[523.25,110],[659.25,220],[783.99,330],[1046.5,450]].forEach(([f, t]) => setTimeout(() => beep(f, .3, 'triangle', .16), t));
+  [[523.25,650],[659.25,650],[783.99,650],[1046.5,650]].forEach(([f, t]) => setTimeout(() => beep(f, 1.1, 'triangle', .1), t));
+  [1318.5,1568,1760,2093,1760,1568,2093,2637].forEach((f, i) => setTimeout(() => beep(f, .16, 'sine', .07), 900 + i * 110));
+}
+function openBingo() {
+  if (!bingoOv.hidden) return;
+  bingoOv.hidden = false; bingoOpenedAt = Date.now(); sizeConf(); scaleConf(); confetti = []; confRain = calm ? 1 : 9; confLast = performance.now();
+  const k = calm ? .4 : 1, W = innerWidth, H = innerHeight;
+  burst(0, H * .85, 90 * k, -Math.PI / 3, .9, 1150); burst(W, H * .85, 90 * k, -Math.PI * 2 / 3, .9, 1150);
+  bingoTimers.push(setTimeout(() => { burst(W * .5, H * .95, 110 * k, -Math.PI / 2, 1.3, 1200); }, 450));
+  bingoTimers.push(setTimeout(() => { burst(0, H * .6, 60 * k, -Math.PI / 4, .8, 1000); burst(W, H * .6, 60 * k, -Math.PI * 3 / 4, .8, 1000); }, 1100));
+  cancelAnimationFrame(confRaf); confRaf = requestAnimationFrame(confStep);
+  ejectBalls(); bingoSound(); document.getElementById('bingoClose').focus();
+}
+function closeBingo() { bingoOv.hidden = true; returnBalls(); cancelAnimationFrame(confRaf); bingoTimers.forEach(clearTimeout); bingoTimers = []; confetti = []; document.getElementById('btnBingo').focus(); }
+document.getElementById('btnBingo').onclick = openBingo;
+document.getElementById('bingoClose').onclick = closeBingo;
+bingoOv.addEventListener('click', e => { if (e.target !== document.getElementById('bingoClose') && Date.now() - bingoOpenedAt > 1200) closeBingo(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !bingoOv.hidden) { e.stopImmediatePropagation(); closeBingo(); } }, true);
+window.addEventListener('resize', () => { if (!bingoOv.hidden) sizeConf(); });
+
+/* ---------- Init ---------- */
+if (!load()) { pool = [...masterList]; }
+setTable(tableFromGame());
+makeBalls(); updateUI();
+requestAnimationFrame(t => { lastFrame = t; render(t); });
+</script>
+</body>
+</html>

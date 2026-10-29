@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wheelchair Run</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#070b16;--card:#0d1424;--card2:#121a30;--border:#1f2a48;--text:#e8ecf8;--muted:#8d99b8;--a:#2f4fe0;--b:#0021A5;--c:#FA4616;--peri:#9bb0ff;--cream:#fff1e8;--good:#3ddc97;--display:"Big Shoulders Display","Arial Narrow",Impact,system-ui,sans-serif;--ui:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);line-height:1.45;min-height:100vh;padding:16px max(16px,env(safe-area-inset-right)) 28px max(16px,env(safe-area-inset-left))}
+button,input{font:inherit;color:inherit}:focus-visible{outline:3px solid var(--peri);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px}
+h1{margin:0 0 6px;font:900 clamp(34px,9vw,52px)/.95 var(--display);text-transform:uppercase;text-align:center}
+.sub{margin:0 0 18px;text-align:center;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;font-size:.78rem;font-weight:600}
+.btn-main{display:block;width:100%;padding:15px;border:0;border-radius:12px;font-weight:700;font-size:1.05rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--a),var(--b))}
+.btn-sec{padding:11px 16px;border:1px solid var(--border);border-radius:12px;background:var(--card2);cursor:pointer;font-weight:600}
+.btn-sec.armed{background:#7a2a10;border-color:var(--c);color:#fff}
+.inp{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);font-size:1.1rem;margin:6px 0 14px}
+.lbl{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px;font-size:.85rem}
+.err{color:#ff9a9a;margin:0 0 12px}
+.signature{margin-top:26px;text-align:center;font-style:italic;font-size:.72rem;color:var(--muted);opacity:.6}
+
+
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:.85rem;color:var(--muted)}
+.top a{color:var(--muted)}.top b{color:var(--text)}
+.arcade{margin:14px auto 0;max-width:420px;padding:12px;background:#080d1e;border:1px solid var(--border);border-radius:14px;text-align:center}
+.arc-t{font:700 .72rem/1 var(--ui);letter-spacing:.2em;text-transform:uppercase;color:var(--c);margin-bottom:8px}
+.arcade canvas{display:block;width:100%;aspect-ratio:320/130;border-radius:8px;background:#05081a;touch-action:manipulation;cursor:pointer}
+.arc-j{display:block;width:100%;margin-top:10px;padding:14px;font-size:1.1rem;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.arc-s{margin-top:7px;font-size:.78rem;color:var(--muted)}
+h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:uppercase;color:#9db2ff}
+.row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
+.row .rk{font:900 22px/1 var(--display);color:var(--c);min-width:32px}
+.row .nm{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .tm{font:800 24px/1 var(--display);font-variant-numeric:tabular-nums}
+.row.me{background:rgba(47,79,224,.16);border-radius:8px;padding-inline:8px}
+.x{padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-weight:700;font-size:.75rem;cursor:pointer}
+.x.armed{border-color:#ff6b6b;color:#ff9a9a}
+.note{margin:12px 0 0;font-size:.78rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="index.html">&larr; Home</a><span id="who"></span></div>
+  <div class="card">
+    <h1>Wheelchair Run</h1>
+    <p class="sub">Play this while you wait</p>
+    <div id="game"></div>
+    <h2>Top runs</h2>
+    <div id="board"></div>
+    <p class="note" id="boardNote">Best score for each username.</p>
+  </div>
+  <div class="signature">Built by Atticus, 10/29/26</div>
+</div>
+<script>
+(function(){
+var FIREBASE_CONFIG={databaseURL:"https://transport-week-trivia-default-rtdb.firebaseio.com"};
+var ROOM='TWEEK';
+function sget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function sset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function $(s){return document.querySelector(s);}
+function scramble(str){
+  var h1=0xdeadbeef,h2=0x41c6ce57,i,ch;
+  for(i=0;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (h2>>>0).toString(36)+(h1>>>0).toString(36);
+}
+var USER=sget('brt.user'),ADMIN=sget('brt.adminok')==='9hjs7e1wijrij';
+if(!USER){location.replace('index.html');return;}
+var P={named:true,name:USER};
+function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function lbKey(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
+function h(tag,props){
+  var e=document.createElement(tag);
+  if(props){Object.keys(props).forEach(function(k){
+    var v=props[k];
+    if(k==='class')e.className=v;
+    else if(k==='on'){Object.keys(v).forEach(function(ev){e.addEventListener(ev,v[ev]);});}
+    else if(k==='style')e.style.cssText=v;
+    else if(v===true)e.setAttribute(k,'');
+    else if(v!==false&&v!=null)e.setAttribute(k,v);
+  });}
+  var kids=[].slice.call(arguments,2);
+  (function add(list){list.forEach(function(kid){
+    if(kid==null||kid===false)return;
+    if(Array.isArray(kid))return add(kid);
+    e.append(kid.nodeType?kid:document.createTextNode(String(kid)));
+  });})(kids);
+  return e;
+}
+
+var db=null,ref=null,data={};
+try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();ref=db.ref('rooms/'+ROOM+'/lb/arcade');}catch(e){db=null;}
+function lbPut(board,name,score){
+  if(!ref||!(score>0))return;
+  ref.child(lbKey(name)).transaction(function(cur){if(cur&&cur.s>=score)return;return {n:String(name).slice(0,16),s:score,t:firebase.database.ServerValue.TIMESTAMP};});
+}
+var room=null,owner=false;
+/*arcade:start*/
+var ARC_W=320,ARC_H=130,ARC_G=112,ARC_CW=8.4,ARC_LH=13,ARC_PX=26;
+var ARC_SPR={
+  sign:{rows:[' /!\\ ','/_W_\\'],w:5,h:2},
+  iv:{rows:['(+)',' |\\','_|_'],w:3,h:3},
+  person:{rows:[' o ','/|\\','/ \\'],w:3,h:3},
+  cart:{rows:['[==o==]','  o  o '],w:7,h:2}
+};
+function arcPlayerRows(frame){return ['|   ','|___',frame?'(+)o':'(x)o'];}
+function arcNew(rnd,always){rnd=rnd||Math.random;return {y:0,vy:0,speed:190,dist:0,obs:[],gap:240,over:false,started:false,t:0,bat:(always||rnd()<1/10)?rnd()*10:-1};}
+function arcJump(G){if(G.y<=0.5&&!G.over){G.vy=430;G.started=true;}}
+function arcScore(G){return Math.floor(G.dist/12);}
+function arcStep(G,dt,rnd){
+  if(G.over||!G.started)return;
+  G.t+=dt;
+  G.vy-=1300*dt;G.y+=G.vy*dt;if(G.y<0){G.y=0;G.vy=0;}
+  G.dist+=G.speed*dt;G.speed=Math.min(430,190+G.dist*0.011);
+  var f=Math.max(0,Math.min(1,(G.speed-190)/240)),i;
+  for(i=0;i<G.obs.length;i++)G.obs[i].x-=G.speed*dt;
+  G.obs=G.obs.filter(function(o){return o.x+o.w*ARC_CW>-10;});
+  G.gap-=G.speed*dt;
+  if(G.gap<=0){
+    var keys=['sign','sign','iv','person','cart'],k=keys[Math.floor(rnd()*keys.length)],sp=ARC_SPR[k];
+    var x=ARC_W+10,lastw=sp.w*ARC_CW;
+    G.obs.push({k:k,x:x,w:sp.w*ARC_CW,h:sp.h*ARC_LH});
+    var air=0.655*G.speed;
+    G.gap=lastw+air*((1.5-0.35*f)+rnd()*(1.2-0.4*f));
+  }
+  var pw=4*ARC_CW,ph=3*ARC_LH;
+  for(i=0;i<G.obs.length;i++){
+    var o=G.obs[i];
+    if(ARC_PX+6<o.x+o.w-3&&ARC_PX+pw-6>o.x+3&&G.y<o.h-3&&G.y+ph-4>0){G.over=true;return;}
+  }
+}
+/*arcade:end*/
+
+
+var ARC_BG=[
+  ['  _+_   ',' |[H]|  ','|[][][]|','|__||__|'],
+  ['+-EMERGENCY-+','| []  ||  []|','|____|__|___|'],
+  [' __+____ ','|AMBULANCE\\','(o)====(o)'],
+  ['  --+--  ','=(___)>>=','[__ H __]'],
+  ['   _[+]_  ','  |_ _ _| ','  |HOSPITAL|','  |_|__|__|']
+];
+var ARC={el:null,cv:null,cx:null,G:arcNew(null,false),running:false,raf:0,last:0,hi:Number(sget('brt.hi'))||0};
+function arcDraw(){
+  var cx=ARC.cx,G=ARC.G;if(!cx)return;
+  cx.clearRect(0,0,ARC_W,ARC_H);
+  cx.textBaseline='top';cx.font='bold 14px ui-monospace,Menlo,Consolas,monospace';
+  function sprite(rows,x,yBottom,col){cx.fillStyle=col;rows.forEach(function(r,i){cx.fillText(r,x,yBottom-(rows.length-i)*ARC_LH);});}
+  // far layer: clouds and buildings scroll slower than the ground (parallax)
+  cx.fillStyle='#232b50';
+  var cl=((G.dist*0.1)%200);
+  for(var c=-1;c<3;c++){cx.fillText('~~~',c*200-cl+30,12);cx.fillText('~~',c*200-cl+130,30);}
+  var step=170,cyc=step*ARC_BG.length,boff=(G.dist*0.32)%cyc;
+  cx.fillStyle='#303a66';
+  for(var bi=0;bi<ARC_BG.length*2;bi++){
+    var bx=bi*step-boff;if(bx>ARC_W||bx<-130)continue;
+    var rows=ARC_BG[bi%ARC_BG.length];
+    rows.forEach(function(r,ri){cx.fillText(r,bx,ARC_G-6-(rows.length-ri)*ARC_LH);});
+  }
+  // easter egg: a bat drifts the opposite way, across the top
+  if(G.bat>=0&&G.t>=G.bat&&G.t<G.bat+7){
+    var bp=(G.t-G.bat)/7,bx=-70+bp*(ARC_W+140),by=26+Math.sin(G.t*2.2)*7;
+    cx.fillStyle='#4a5694';cx.fillText(Math.floor(G.t*6)%2?'/\\^o^/\\':'\\/^o^\\/',bx,by);
+    cx.font='bold 8px ui-monospace,Menlo,Consolas,monospace';cx.fillStyle='#39437a';cx.fillText('~ atticus',bx-6,by+15);
+    cx.font='bold 14px ui-monospace,Menlo,Consolas,monospace';
+  }
+  // ground
+  cx.fillStyle='#3a4780';var off=(G.dist*1)%24,gy=ARC_G;
+  cx.fillRect(0,gy+1,ARC_W,1);
+  cx.fillStyle='#55639f';
+  for(var x=-off;x<ARC_W;x+=24)cx.fillText(((x/24|0)%3===0)?'.':',',x,gy+4);
+  // player
+  var fr=Math.floor(G.t*9)%2;
+  sprite(arcPlayerRows(fr),ARC_PX,ARC_G-G.y,G.over?'#ff8a5c':'#fff1e8');
+  // obstacles
+  G.obs.forEach(function(o){sprite(ARC_SPR[o.k].rows,o.x,ARC_G,o.k==='person'?'#9bb0ff':(o.k==='cart'?'#ffb08a':(o.k==='sign'?'#e9b44c':'#8fd0c8')));});
+  // hud
+  cx.fillStyle='#8d99b8';cx.textAlign='right';
+  cx.fillText('HI '+String(ARC.hi).padStart(5,'0')+'  '+String(arcScore(G)).padStart(5,'0'),ARC_W-8,6);
+  cx.textAlign='center';
+  if(!G.started){cx.fillStyle='#fff1e8';cx.fillText('PRESS JUMP TO START',ARC_W/2,40);}
+  if(G.over){cx.fillStyle='#fa4616';cx.fillText('GAME OVER',ARC_W/2,34);cx.fillStyle='#fff1e8';cx.fillText('press jump to try again',ARC_W/2,52);}
+  cx.textAlign='left';
+}
+function arcLoop(now){
+  if(!ARC.el||!ARC.el.isConnected||ARC.el.offsetParent===null){ARC.running=false;ARC.raf=0;return;}
+  var dt=Math.min(0.05,(now-ARC.last)/1000||0.016);ARC.last=now;
+  var wasOver=ARC.G.over;
+  arcStep(ARC.G,dt,Math.random);
+  if(!wasOver&&ARC.G.over){var sc=arcScore(ARC.G);if(sc>ARC.hi){ARC.hi=sc;sset('brt.hi',String(sc));}ARC.overAt=now;var who=arcWho();if(who)lbPut('arcade',who,sc);}
+  arcDraw();
+  ARC.raf=requestAnimationFrame(arcLoop);
+}
+function arcTap(){
+  var G=ARC.G;
+  if(G.over){if(performance.now()-(ARC.overAt||0)>350){ARC.G=arcNew(null,arcFar());arcJump(ARC.G);}return;}
+  arcJump(G);
+}
+function arcWho(){return (P&&P.named&&P.name)||'';}
+function arcFar(){return String(arcWho()).toLowerCase()==='farticus';}
+function arcade(){
+  if(!ARC.el){
+    var dpr=Math.min(2,window.devicePixelRatio||1);
+    ARC.cv=document.createElement('canvas');ARC.cv.width=Math.round(ARC_W*dpr);ARC.cv.height=Math.round(ARC_H*dpr);
+    ARC.cv.setAttribute('aria-label','Wheelchair jumping game. Tap to jump.');
+    ARC.cx=ARC.cv.getContext('2d');if(ARC.cx)ARC.cx.setTransform(dpr,0,0,dpr,0,0);
+    var jb=h('button',{class:'btn-main arc-j',type:'button'},'JUMP');
+    jb.addEventListener('pointerdown',function(e){e.preventDefault();arcTap();});
+    ARC.jb=jb;
+    ARC.el=h('div',{class:'arcade'},h('div',{class:'arc-t'},'Play this while you wait'),ARC.cv,jb,h('div',{class:'arc-s'},'Dodge wet floor signs, IV poles, people and stretchers. Your wheelchair is on its own.'));
+    document.addEventListener('keydown',function(e){
+      if(!ARC.el.isConnected||ARC.el.offsetParent===null)return;
+      var t=e.target&&e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||(t==='BUTTON'&&e.target!==ARC.jb))return;
+      if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();arcTap();}
+    });
+    arcDraw();
+  }
+  if(!ARC.G.started&&!ARC.G.over)ARC.G=arcNew(null,arcFar());
+  if(!ARC.running&&ARC.cx){ARC.running=true;ARC.last=performance.now();ARC.raf=requestAnimationFrame(arcLoop);}
+  return ARC.el;
+}
+
+
+$('#who').innerHTML='Playing as <b></b>';$('#who').querySelector('b').textContent=USER;
+$('#game').appendChild(arcade());
+function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
+  if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
+  b.dataset.a='1';b.textContent=armed;b.classList.add('armed');
+  t=setTimeout(function(){b.dataset.a='';b.textContent=label;b.classList.remove('armed');},3000);});}
+function draw(){
+  var rows=Object.keys(data).map(function(k){return {k:k,n:data[k].n,s:data[k].s||0,t:data[k].t||0};}).sort(function(a,b){return b.s-a.s||a.t-b.t;}).slice(0,25);
+  var b=$('#board'),me=lbKey(USER);b.textContent='';
+  if(!rows.length){var p=document.createElement('p');p.className='note';p.textContent='No scores yet. Be the first!';b.appendChild(p);}
+  rows.forEach(function(r,i){
+    var d=document.createElement('div');d.className='row'+(r.k===me?' me':'');
+    d.innerHTML='<span class="rk"></span><span class="nm"></span><span class="tm"></span>';
+    d.children[0].textContent=i+1;d.children[1].textContent=r.n||r.k;d.children[2].textContent=fmt(r.s);
+    if(ADMIN){var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Delete';armBtn(x,'Delete','Sure?',function(){ref.child(r.k).remove();});d.appendChild(x);}
+    b.appendChild(d);
+  });
+  if(ADMIN&&rows.length){var c=document.createElement('button');c.className='btn-sec';c.style.marginTop='14px';c.type='button';c.textContent='Clear leaderboard';armBtn(c,'Clear leaderboard','Tap again to clear everything',function(){ref.remove();});b.appendChild(c);}
+}
+if(ref)ref.on('value',function(sn){data=sn.val()||{};draw();});
+})();
+</script>
+</body>
+</html>
