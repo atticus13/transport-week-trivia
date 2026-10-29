@@ -66,6 +66,8 @@ function login(){
   inp.focus();
 }
 function hostLink(){return el('a',{class:'tile',href:'host.html',style:'margin-bottom:16px;padding:14px;text-align:center;border-style:dashed'},el('b',{style:'font-size:20px;margin:0'},'Hosting an event?'),el('span',null,'Open the host tools (passcode needed)'));}
+var TRIVIA_FORM='https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=D8x6Ko0Q8Uyx_0D6F7gwzq085dwmUlpEiaflC7FXq8JUOUxJVkc0U1kwNjAzUUVCNUpXSjA0SUU2QS4u';  // paste your Microsoft Forms link between the quotes
+function formBtn(){return TRIVIA_FORM?el('a',{class:'tile',href:TRIVIA_FORM,target:'_blank',rel:'noopener noreferrer',style:'margin-top:16px;padding:14px;text-align:center;border-style:dashed'},el('b',{style:'font-size:20px;margin:0'},'Submit a trivia question'),el('span',null,'Opens in a new tab. Your game stays right here.')):null;}
 function adminBox(){return el('p',{style:'text-align:center;margin:22px 0 0'},el('a',{class:'link',href:'host.html'},'Host tools'),' \u00b7 ',el('a',{class:'link',href:'admin.html'},'Admin'));}
 function home(){
   var u=sget('brt.user');
@@ -78,7 +80,7 @@ function home(){
   var out=el('button',{class:'link',type:'button',on:{click:function(){sset('brt.user','');sset('brt.name','');sset('brt.joined','0');render();}}},'Not you? Log out');
   root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),
     el('div',{class:'who'},el('span',null,'Logged in as ',el('b',null,u),null),out),
-    el('div',{class:'tiles'},tiles),adminBox());
+    el('div',{class:'tiles'},tiles),formBtn(),adminBox());
 }
 function render(){if(sget('brt.user'))home();else login();}
 render();
