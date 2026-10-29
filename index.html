@@ -118,7 +118,7 @@ function home(){
   var out=el('button',{class:'link',type:'button',on:{click:function(){sset('brt.user','');sset('brt.name','');sset('brt.joined','0');render();}}},'Not you? Log out');
   root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),
     el('div',{class:'who'},el('span',null,'Logged in as ',el('b',null,u),null),out),
-    el('div',{class:'tiles'},tiles),el('div',{class:'lbwrap',id:'lbbox'}),formBtn(),adminBox());
+    el('div',{class:'tiles'},tiles),formBtn(),el('div',{class:'lbwrap',id:'lbbox'}),adminBox());
   lbStart();lbDraw();
 }
 function render(){if(sget('brt.user'))home();else login();}

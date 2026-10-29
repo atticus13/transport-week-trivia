@@ -59,6 +59,7 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
 .x.armed{border-color:#ff6b6b;color:#ff9a9a}
 .note{margin:12px 0 0;font-size:.78rem;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#101a3c;border:1px solid var(--border);padding:10px 16px;border-radius:12px;z-index:9}
+html.hostview #pad,html.hostview #best,html.hostview #again{display:none!important}
 </style>
 </head>
 <body>
@@ -85,15 +86,17 @@ var ROOM='TWEEK'; // best times: rooms/TWEEK/lb/stack | open/closed: rooms/TWEEK
 function sget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function sset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 var ADMIN=sget('brt.adminok')==='eelyiy1bbww01',HOST=ADMIN||sget('brt.hostok')==='1hg4rirz0r6k2';
+var HOSTVIEW=HOST&&/[?&]host=1/.test(location.search);
+if(HOSTVIEW)document.documentElement.classList.add('hostview');
 var USER=sget('brt.user')||'';
-if(!USER&&!HOST){location.replace('index.html');return;}
+if(!USER&&!HOSTVIEW){location.replace('index.html');return;}
 function $(i){return document.getElementById(i);}
-if(ADMIN){$('backLink').href='admin.html';$('backLink').innerHTML='&larr; Admin menu';}
-else if(HOST){$('backLink').href='host.html';$('backLink').innerHTML='&larr; Host tools';}
+if(HOSTVIEW&&ADMIN){$('backLink').href='admin.html';$('backLink').innerHTML='&larr; Admin menu';}
+else if(HOSTVIEW){$('backLink').href='host.html';$('backLink').innerHTML='&larr; Host tools';}
 function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true;},2800);}
 function key(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
 function fmt(ms){var s=ms/1000;if(s<60)return s.toFixed(2)+'s';var m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(2).padStart(5,'0');}
-if(USER){$('who').innerHTML='Playing as <b></b>';$('who').querySelector('b').textContent=USER;}
+if(USER&&!HOSTVIEW){$('who').innerHTML='Playing as <b></b>';$('who').querySelector('b').textContent=USER;}
 else{$('who').textContent='Host controls';$('pad').hidden=true;$('best').hidden=true;}
 
 /* ---------- storage ---------- */
@@ -112,10 +115,10 @@ if(ref)ref.on('value',function(sn){data=sn.val()||{};draw();},function(){$('boar
 else $('boardNote').textContent='Leaderboard unavailable right now.';
 if(tref)tref.on('value',function(sn){var v=sn.val()||{};open=!!v.open;gateUpdate();hostDraw();});
 /* the host leaving this page closes the timer automatically */
-if(HOST&&tref){try{tref.onDisconnect().set({open:false});}catch(e){}window.addEventListener('pagehide',function(){try{tref.set({open:false});}catch(e){}});}
+if(HOSTVIEW&&tref){try{tref.onDisconnect().set({open:false});}catch(e){}window.addEventListener('pagehide',function(){try{tref.set({open:false});}catch(e){}});}
 var HIDDEN=false,HIDEFN=function(){draw();};
 if(db)db.ref('rooms/'+ROOM+'/lbhidden').on('value',function(sn){HIDDEN=!!sn.val();draw();});
-if(runsRef&&HOST)runsRef.on('value',function(sn){runs=sn.val()||{};hostDraw();});
+if(runsRef&&HOSTVIEW)runsRef.on('value',function(sn){runs=sn.val()||{};hostDraw();});
 function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
   if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
   b.dataset.a='1';b.textContent=armed;b.classList.add('armed');
@@ -138,7 +141,7 @@ function deleteRun(r){
   ref.child(r.k).set({n:best.n||r.n,s:best.ms,t:firebase.database.ServerValue.TIMESTAMP});
 }
 function hostDraw(){
-  var p=$('hostPanel');if(!HOST){p.hidden=true;return;}
+  var p=$('hostPanel');if(!HOSTVIEW){p.hidden=true;return;}
   p.hidden=false;p.textContent='';
   var b=document.createElement('b');b.textContent='Host controls';p.appendChild(b);
   var st=document.createElement('p');st.style.margin='8px 0 0';st.textContent=open?'Timer is OPEN. Players can run it as many times as they like.':'Timer is CLOSED. Players cannot use it.';p.appendChild(st);
@@ -146,9 +149,9 @@ function hostDraw(){
   var tog=document.createElement('button');tog.type='button';tog.className='btn-sec';tog.textContent=open?'Close timer':'Open timer';
   tog.addEventListener('click',function(){tref.set({open:!open});});
   bt.appendChild(tog);p.appendChild(bt);
-  var list=allRuns().slice(0,6);
+  var list=allRuns().slice(0,3);
   if(list.length){
-    var h3=document.createElement('p');h3.className='note';h3.style.margin='0 0 4px';h3.textContent='Latest runs (newest first). Delete one if it was a wash. The player keeps their fastest remaining time.';p.appendChild(h3);
+    var h3=document.createElement('p');h3.className='note';h3.style.margin='0 0 4px';h3.textContent='Last 3 runs (newest first). Delete one if it was a wash. The player keeps their fastest remaining time.';p.appendChild(h3);
     list.forEach(function(r){
       var d=document.createElement('div');d.className='row';
       d.innerHTML='<span class="nm"></span><span class="tm"></span>';
