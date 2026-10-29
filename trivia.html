@@ -267,7 +267,7 @@ input:focus{border-color:var(--c);outline:none}
       <button id="bOptions" class="btn-sec" type="button">Options</button>
     </nav>
   </div>
-  <div class="lbbar"><button class="link-btn" id="lbBtn" type="button">Leaderboards</button> &nbsp;&middot;&nbsp; <a class="link-btn" href="index.html" style="text-decoration:underline">Home</a></div>
+  <div class="lbbar"><button class="link-btn" id="lbBtn" type="button">Leaderboards</button> &nbsp;&middot;&nbsp; <a class="link-btn" id="homeLnk" href="index.html" style="text-decoration:underline">Home</a></div>
   <div class="signature">Built by Atticus, 10/28/26</div>
 </div>
 
@@ -1450,9 +1450,10 @@ function hostGate(){
     else{err.hidden=false;pw.value='';pw.focus();}
   }}},h('h2',{class:'h-title'},'Host screen'),h('p',{class:'lede'},'Enter the host passcode to run the game. Players: use the Home page to join.'),
     err,pw,h('button',{class:'btn-main',type:'submit',style:'width:100%;margin-top:12px;padding:16px;font-size:1.05rem'},'Enter'),
-    h('p',{style:'text-align:center;margin-top:14px'},h('a',{class:'link-btn',href:'index.html',style:'text-decoration:underline'},'Back to Home')));
+    h('p',{style:'text-align:center;margin-top:14px'},h('a',{class:'link-btn',href:'host.html',style:'text-decoration:underline'},'Back to host tools')));
 }
 function route(){
+  var hl=document.getElementById('homeLnk');if(hl&&owner){hl.href=isAdmin()?'admin.html':'host.html';hl.textContent=isAdmin()?'Admin menu':'Host tools';}
   if(!ready)return;
   if(!room||roomDead){
     clearInterval(H.timer);clearInterval(P.tick);

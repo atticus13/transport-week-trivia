@@ -49,7 +49,7 @@ function scramble(str){
   h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
   return (h2>>>0).toString(36)+(h1>>>0).toString(36);
 }
-var AH='9hjs7e1wijrij',adminOpen=false;
+
 function el(tag,attrs){var e=document.createElement(tag);if(attrs)Object.keys(attrs).forEach(function(k){if(k==='on'){Object.keys(attrs.on).forEach(function(ev){e.addEventListener(ev,attrs.on[ev]);});}else if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k]);});
   [].slice.call(arguments,2).forEach(function(c){if(c==null)return;(Array.isArray(c)?c:[c]).forEach(function(x){e.append(x.nodeType?x:document.createTextNode(String(x)));});});return e;}
 var root=document.getElementById('root');
@@ -59,32 +59,24 @@ function login(){
   var err=el('p',{class:'err',hidden:''});
   function go(e){e.preventDefault();var n=clean(inp.value);if(!n){err.textContent='Type a username first.';err.hidden=false;return;}
     sset('brt.user',n);sset('brt.left','');sset('brt.name',n);render();}
-  root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),
+  root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),hostLink(),
     el('form',{on:{submit:go}},el('label',{class:'lbl','for':'u'},'Pick a username'),inp,err,
       el('p',{class:'sub',style:'text-align:left;letter-spacing:0;text-transform:none;font-size:.85rem;margin:-6px 0 14px'},'You can use a nickname, but please keep it appropriate. Try to come up with something unique no one else will pick. Your scores in every game are saved under this name.'),
       el('button',{class:'btn-main',type:'submit'},'Continue')),adminBox());
   inp.focus();
 }
-function adminBox(){
-  if(sget('brt.adminok')===AH)return el('p',{style:'text-align:center;margin:22px 0 0;color:var(--muted);font-size:.85rem'},'Admin mode is on. ',el('button',{class:'link',type:'button',on:{click:function(){sset('brt.adminok','');render();}}},'Turn off'));
-  if(!adminOpen)return el('p',{style:'text-align:center;margin:22px 0 0'},el('a',{class:'link',href:'host.html'},'Host tools'),' ',el('button',{class:'link',type:'button',on:{click:function(){adminOpen=true;render();}}},'Admin'));
-  var u=el('input',{class:'inp',type:'text',autocomplete:'off',autocapitalize:'off',placeholder:'Admin username',style:'margin-bottom:8px'});
-  var pw=el('input',{class:'inp',type:'password',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'PIN',style:'margin-bottom:8px'});
-  var err=el('p',{class:'err',hidden:''},'Wrong username or PIN.');
-  return el('form',{style:'margin-top:20px;padding-top:14px;border-top:1px solid var(--border)',on:{submit:function(e){e.preventDefault();
-    if(scramble('brt|admin|'+u.value.trim().toLowerCase()+'|'+pw.value.trim())===AH){sset('brt.adminok',AH);adminOpen=false;render();}else{err.hidden=false;pw.value='';pw.focus();}}}},
-    el('p',{class:'lbl',style:'margin:0'},'Admin login'),u,pw,err,el('button',{class:'btn-main',type:'submit'},'Log in'));
-}
+function hostLink(){return el('a',{class:'tile',href:'host.html',style:'margin-bottom:16px;padding:14px;text-align:center;border-style:dashed'},el('b',{style:'font-size:20px;margin:0'},'Hosting an event?'),el('span',null,'Open the host tools (passcode needed)'));}
+function adminBox(){return el('p',{style:'text-align:center;margin:22px 0 0'},el('a',{class:'link',href:'admin.html'},'Admin'));}
 function home(){
   var u=sget('brt.user');
   var tiles=[
     el('a',{class:'tile',href:'trivia.html?r=TWEEK'},el('b',null,'Trivia'),el('span',null,'Join the live game. Answer fast for bonus points.')),
     el('a',{class:'tile',href:'wheelchair.html'},el('b',null,'Wheelchair Run'),el('span',null,'Jump the hospital obstacles. Beat the best score.')),
-    el('a',{class:'tile',href:'timer.html'},el('b',null,'Stack Timer'),el('span',null,'Hold, let go to start, touch to stop. Fastest time wins when the host opens it.'))
+    el('a',{class:'tile',href:'timer.html'},el('b',null,'Game Timer'),el('span',null,'Hold, let go to start, touch to stop. Fastest time wins when the host opens it.'))
   ];
   var out=el('button',{class:'link',type:'button',on:{click:function(){sset('brt.user','');sset('brt.name','');sset('brt.joined','0');render();}}},'Not you? Log out');
   root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),
-    el('div',{class:'who'},el('span',null,'Logged in as ',el('b',null,u),null),out),
+    hostLink(),el('div',{class:'who'},el('span',null,'Logged in as ',el('b',null,u),null),out),
     el('div',{class:'tiles'},tiles),adminBox());
 }
 function render(){if(sget('brt.user'))home();else login();}

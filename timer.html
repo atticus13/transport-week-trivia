@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Stack Timer</title>
+<title>Game Timer</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -43,6 +43,7 @@ h1{margin:0 0 6px;font:900 clamp(34px,9vw,52px)/.95 var(--display);text-transfor
 .hostp b{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:#ff9a66}
 .hostp .btns{display:flex;gap:8px;margin:10px 0}.hostp .btns button{flex:1}
 .pad.locked{opacity:.55;cursor:not-allowed}
+.hostp .row .tm{font-size:20px}
 h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:uppercase;color:#9db2ff}
 .row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
 .row .rk{font:900 22px/1 var(--display);color:var(--c);min-width:32px}
@@ -57,9 +58,9 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a href="index.html">&larr; Home</a><span id="who"></span></div>
+  <div class="top"><a id="backLink" href="index.html">&larr; Home</a><span id="who"></span></div>
   <div class="card">
-    <h1>Stack Timer</h1>
+    <h1>Game Timer</h1>
     <p class="sub">Hold, let go, stop</p>
     <div id="hostPanel" class="hostp" hidden></div>
     <div id="pad" class="pad" role="button" tabindex="0" aria-label="Timer pad"></div>
@@ -75,90 +76,96 @@ h2{margin:26px 0 10px;font-size:.9rem;letter-spacing:.18em;text-transform:upperc
 <script>
 (function(){
 var FIREBASE_CONFIG={databaseURL:"https://transport-week-trivia-default-rtdb.firebaseio.com"};
-var ROOM='TWEEK'; // leaderboard: rooms/TWEEK/lb/stack, host controls: rooms/TWEEK/timer, runs: rooms/TWEEK/timerruns
+var ROOM='TWEEK'; // best times: rooms/TWEEK/lb/stack | open/closed: rooms/TWEEK/timer | every run: rooms/TWEEK/timerruns/<name>/<id>
 function sget(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function sset(k,v){try{localStorage.setItem(k,v);}catch(e){}}
-var HOST=sget('brt.hostok')==='1hg4rirz0r6k2',ADMIN=sget('brt.adminok')==='9hjs7e1wijrij';
+var ADMIN=sget('brt.adminok')==='9hjs7e1wijrij',HOST=ADMIN||sget('brt.hostok')==='1hg4rirz0r6k2';
 var USER=sget('brt.user')||'';
 if(!USER&&!HOST){location.replace('index.html');return;}
 function $(i){return document.getElementById(i);}
+if(ADMIN){$('backLink').href='admin.html';$('backLink').innerHTML='&larr; Admin menu';}
+else if(HOST){$('backLink').href='host.html';$('backLink').innerHTML='&larr; Host tools';}
 function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true;},2800);}
 function key(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
 function fmt(ms){var s=ms/1000;if(s<60)return s.toFixed(2)+'s';var m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(2).padStart(5,'0');}
-if(USER){$('who').innerHTML='Playing as <b></b>';$('who').querySelector('b').textContent=USER;}else{$('who').textContent='Host controls';['pad','best'].forEach(function(i){$(i).hidden=true;});}
+if(USER){$('who').innerHTML='Playing as <b></b>';$('who').querySelector('b').textContent=USER;}
+else{$('who').textContent='Host controls';$('pad').hidden=true;$('best').hidden=true;}
 
-/* ---------- leaderboard storage ---------- */
-var db=null,ref=null,data={},myBest=null,tref=null,rref=null,tstate={open:false,round:0},runs={};
-try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();ref=db.ref('rooms/'+ROOM+'/lb/stack');tref=db.ref('rooms/'+ROOM+'/timer');}catch(e){db=null;}
-function saveBest(ms){
-  if(!ref)return;
-  ref.child(key(USER)).transaction(function(cur){
+/* ---------- storage ---------- */
+var db=null,ref=null,tref=null,runsRef=null,data={},runs={},myBest=null,open=false;
+try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();ref=db.ref('rooms/'+ROOM+'/lb/stack');tref=db.ref('rooms/'+ROOM+'/timer');runsRef=db.ref('rooms/'+ROOM+'/timerruns');}catch(e){db=null;}
+function saveRun(ms){
+  if(!db)return;
+  var k=key(USER);
+  runsRef.child(k).push({n:USER,ms:ms,at:Date.now()});
+  ref.child(k).transaction(function(cur){
     if(cur&&cur.s<=ms)return;
     return {n:USER,s:ms,t:firebase.database.ServerValue.TIMESTAMP};
   }).then(function(r){if(r&&r.committed)toast('New personal best!');}).catch(function(){toast('Could not save your time. Check your connection.');});
 }
 if(ref)ref.on('value',function(sn){data=sn.val()||{};draw();},function(){$('boardNote').textContent='Could not load the leaderboard.';});
 else $('boardNote').textContent='Leaderboard unavailable right now.';
-var runsOff=null;
-function watchRuns(){
-  if(runsOff){runsOff();runsOff=null;}
-  if(!db)return;
-  var r=db.ref('rooms/'+ROOM+'/timerruns/r'+tstate.round),f=function(sn){runs=sn.val()||{};gateUpdate();hostDraw();};
-  r.on('value',f);rref=r;runsOff=function(){r.off('value',f);};
-}
-if(tref)tref.on('value',function(sn){var v=sn.val()||{};var changed=(v.round||0)!==tstate.round;tstate={open:!!v.open,round:v.round||0};if(changed||!runsOff)watchRuns();gateUpdate();hostDraw();});
-function myRun(){return runs[key(USER)];}
-function gate(){
-  if(!tstate.open)return {ok:false,msg:'The timer is closed. Wait for the host to load it.'};
-  if(myRun())return {ok:false,msg:'You have used your run this round. Wait for the host to load the next one.'};
-  return {ok:true};
-}
-function gateUpdate(){if(state==='idle'||state==='locked')idle();}
-function hostDraw(){
-  var p=$('hostPanel');if(!HOST){p.hidden=true;return;}
-  p.hidden=false;p.textContent='';
-  var b=document.createElement('b');b.textContent='Host controls';p.appendChild(b);
-  var st=document.createElement('p');st.style.margin='8px 0 0';st.textContent=tstate.open?'Timer is OPEN for round '+tstate.round+'. Each player gets one run.':'Timer is CLOSED. Players cannot use it.';p.appendChild(st);
-  var bt=document.createElement('div');bt.className='btns';
-  var load=document.createElement('button');load.type='button';load.className='btn-sec';load.textContent=tstate.open?'Load a new round':'Load timer';
-  load.addEventListener('click',function(){tref.set({open:true,round:tstate.round+1});});
-  var close=document.createElement('button');close.type='button';close.className='btn-sec';close.textContent='Close timer';close.disabled=!tstate.open;
-  close.addEventListener('click',function(){tref.set({open:false,round:tstate.round});});
-  bt.appendChild(load);bt.appendChild(close);p.appendChild(bt);
-  var ks=Object.keys(runs);
-  if(ks.length){
-    var h3=document.createElement('p');h3.className='note';h3.style.margin='0 0 4px';h3.textContent='This round (tap Mulligan to give someone another try and remove that time):';p.appendChild(h3);
-    ks.forEach(function(k){
-      var r=runs[k],d=document.createElement('div');d.className='row';
-      d.innerHTML='<span class="nm"></span><span class="tm"></span>';
-      d.children[0].textContent=r.n||k;d.children[1].textContent=r.ms!=null?fmt(r.ms):'running...';
-      var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Mulligan';
-      armBtn(x,'Mulligan','Sure?',function(){
-        rref.child(k).remove();
-        if(data[k]&&r.ms!=null&&data[k].s===r.ms)ref.child(k).remove();
-      });
-      d.appendChild(x);p.appendChild(d);
-    });
-  }
-}
+if(tref)tref.on('value',function(sn){var v=sn.val()||{};open=!!v.open;gateUpdate();hostDraw();});
+if(runsRef&&HOST)runsRef.on('value',function(sn){runs=sn.val()||{};hostDraw();});
 function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
   if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
   b.dataset.a='1';b.textContent=armed;b.classList.add('armed');
   t=setTimeout(function(){b.dataset.a='';b.textContent=label;b.classList.remove('armed');},3000);});}
+function gate(){return open?{ok:true}:{ok:false,msg:'The timer is closed. Wait for the host to open it.'};}
+function gateUpdate(){if(state==='idle'||state==='locked')idle();}
+
+/* ---------- host controls: open or close, and delete a run ---------- */
+function allRuns(){
+  var out=[];
+  Object.keys(runs).forEach(function(k){var o=runs[k]||{};Object.keys(o).forEach(function(id){var r=o[id];if(r&&r.ms!=null)out.push({k:k,id:id,n:r.n||k,ms:r.ms,at:r.at||0});});});
+  return out.sort(function(a,b){return b.at-a.at;});
+}
+function deleteRun(r){
+  // remove that run, then put the player's best time back to their fastest remaining run (or no entry)
+  runsRef.child(r.k).child(r.id).remove();
+  var left=[];Object.keys(runs[r.k]||{}).forEach(function(id){var x=runs[r.k][id];if(id!==r.id&&x&&x.ms!=null)left.push(x);});
+  if(!left.length){ref.child(r.k).remove();return;}
+  var best=left.reduce(function(a,b){return b.ms<a.ms?b:a;});
+  ref.child(r.k).set({n:best.n||r.n,s:best.ms,t:firebase.database.ServerValue.TIMESTAMP});
+}
+function hostDraw(){
+  var p=$('hostPanel');if(!HOST){p.hidden=true;return;}
+  p.hidden=false;p.textContent='';
+  var b=document.createElement('b');b.textContent='Host controls';p.appendChild(b);
+  var st=document.createElement('p');st.style.margin='8px 0 0';st.textContent=open?'Timer is OPEN. Players can run it as many times as they like.':'Timer is CLOSED. Players cannot use it.';p.appendChild(st);
+  var bt=document.createElement('div');bt.className='btns';
+  var tog=document.createElement('button');tog.type='button';tog.className='btn-sec';tog.textContent=open?'Close timer':'Open timer';
+  tog.addEventListener('click',function(){tref.set({open:!open});});
+  bt.appendChild(tog);p.appendChild(bt);
+  var list=allRuns().slice(0,6);
+  if(list.length){
+    var h3=document.createElement('p');h3.className='note';h3.style.margin='0 0 4px';h3.textContent='Latest runs (newest first). Delete one if it was a wash. The player keeps their fastest remaining time.';p.appendChild(h3);
+    list.forEach(function(r){
+      var d=document.createElement('div');d.className='row';
+      d.innerHTML='<span class="nm"></span><span class="tm"></span>';
+      d.children[0].textContent=r.n;d.children[1].textContent=fmt(r.ms);
+      var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Delete';
+      armBtn(x,'Delete','Sure?',function(){deleteRun(r);});
+      d.appendChild(x);p.appendChild(d);
+    });
+  }
+}
+
+/* ---------- leaderboard ---------- */
 function draw(){
   var rows=Object.keys(data).map(function(k){return {k:k,n:data[k].n,s:data[k].s,t:data[k].t||0};}).sort(function(a,b){return a.s-b.s||a.t-b.t;}).slice(0,25);
   var me=key(USER),b=$('board');b.textContent='';
-  myBest=data[me]?data[me].s:null;
-  $('best').innerHTML=myBest!=null?'Your best: <b>'+fmt(myBest)+'</b>':'No time yet. Give it a try!';
+  myBest=USER&&data[me]?data[me].s:null;
+  if(USER)$('best').innerHTML=myBest!=null?'Your best: <b>'+fmt(myBest)+'</b>':'No time yet. Give it a try!';
   if(!rows.length){var p=document.createElement('p');p.className='note';p.textContent='No times yet. Be the first!';b.appendChild(p);}
   rows.forEach(function(r,i){
     var d=document.createElement('div');d.className='row'+(r.k===me?' me':'');
     d.innerHTML='<span class="rk"></span><span class="nm"></span><span class="tm"></span>';
     d.children[0].textContent=i+1;d.children[1].textContent=r.n||r.k;d.children[2].textContent=fmt(r.s);
-    if(ADMIN){var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Delete';armBtn(x,'Delete','Sure?',function(){ref.child(r.k).remove();});d.appendChild(x);}
+    if(ADMIN){var x=document.createElement('button');x.className='x';x.type='button';x.textContent='Delete';armBtn(x,'Delete','Sure?',function(){ref.child(r.k).remove();runsRef.child(r.k).remove();});d.appendChild(x);}
     b.appendChild(d);
   });
-  if(ADMIN&&rows.length){var c=document.createElement('button');c.className='btn-sec';c.style.marginTop='14px';c.type='button';c.textContent='Clear leaderboard';armBtn(c,'Clear leaderboard','Tap again to clear everything',function(){ref.remove();});b.appendChild(c);}
+  if(ADMIN&&rows.length){var c=document.createElement('button');c.className='btn-sec';c.style.marginTop='14px';c.type='button';c.textContent='Clear leaderboard';armBtn(c,'Clear leaderboard','Tap again to clear everything',function(){ref.remove();runsRef.remove();});b.appendChild(c);}
   $('boardNote').textContent='Each username keeps its fastest time.';
 }
 
@@ -180,8 +187,7 @@ function down(e){
     var ms=Math.round(performance.now()-tStart);cancelAnimationFrame(raf);state='done';
     setPad('done',(ms/1000).toFixed(2),'Time: '+fmt(ms));
     $('again').hidden=false;
-    if(db)db.ref('rooms/'+ROOM+'/timerruns/r'+tstate.round+'/'+key(USER)).set({n:USER,ms:ms});
-    if(myBest==null||ms<myBest){saveBest(ms);}else toast('Your best is still '+fmt(myBest)+'.');
+    saveRun(ms);
   }
 }
 function up(e){
@@ -189,8 +195,7 @@ function up(e){
   if(state==='armed'&&e.pointerId===pid){
     if(performance.now()-holdAt<250){idle();return;}  // too quick, treat as a tap and reset
     if(!gate().ok){idle();return;}
-    state='running';tStart=performance.now();
-    if(db)db.ref('rooms/'+ROOM+'/timerruns/r'+tstate.round+'/'+key(USER)).set({n:USER,st:Date.now()});setPad('running','0.00','Touch the pad to stop.');raf=requestAnimationFrame(tick);
+    state='running';tStart=performance.now();setPad('running','0.00','Touch the pad to stop.');raf=requestAnimationFrame(tick);
   }
 }
 pad.addEventListener('pointerdown',down);

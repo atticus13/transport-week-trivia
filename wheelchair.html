@@ -73,6 +73,7 @@ function scramble(str){
 }
 var USER=sget('brt.user'),ADMIN=sget('brt.adminok')==='9hjs7e1wijrij';
 if(!USER){location.replace('index.html');return;}
+(function(){var bl=document.querySelector('.top a');if(ADMIN){bl.href='admin.html';bl.innerHTML='&larr; Admin menu';}else if(sget('brt.hostok')==='1hg4rirz0r6k2'){bl.href='host.html';bl.innerHTML='&larr; Host tools';}})();
 var P={named:true,name:USER};
 function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function lbKey(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}

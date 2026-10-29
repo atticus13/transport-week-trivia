@@ -57,7 +57,7 @@ function render(){
       el('div',{class:'tiles'},
         el('a',{class:'tile',href:'trivia.html'},el('b',null,'Trivia'),el('span',null,'Run a game. The big screen shows the QR code for players to join.')),
         el('a',{class:'tile',href:'bingo.html'},el('b',null,'Bingo'),el('span',null,'The word drawer.')),
-        el('a',{class:'tile',href:'timer.html'},el('b',null,'Stack Timer'),el('span',null,'Load a round for players, close it, and give mulligans.'))),
+        el('a',{class:'tile',href:'timer.html'},el('b',null,'Game Timer'),el('span',null,'Open or close the timer for players, and delete a run if needed.'))),
       el('p',{style:'text-align:center;margin:18px 0 0'},el('a',{class:'link',href:'index.html'},'Player home'),' ',el('button',{class:'link',type:'button',on:{click:function(){sset('brt.hostok','');render();}}},'Lock host tools')));
     return;
   }
