@@ -111,6 +111,7 @@ function adminBox(){return el('p',{style:'text-align:center;margin:22px 0 0'},el
 function home(){
   var u=sget('brt.user');
   var tiles=[
+    el('a',{class:'tile',href:'schedule.html'},el('b',null,'Schedule'),el('span',null,'Lunch, games and prizes for every day of the week.')),
     el('a',{class:'tile',href:'trivia.html?r=TWEEK'},el('b',null,'Trivia'),el('span',null,'Join the live game. Answer fast for bonus points.')),
     el('a',{class:'tile',href:'wheelchair.html'},el('b',null,'Wheelchair Run'),el('span',null,'Jump the hospital obstacles. Beat the best score.')),
     el('a',{class:'tile',href:'timer.html'},el('b',null,'Game Timer'),el('span',null,'Hold, let go to start, touch to stop. Fastest time wins when the host opens it.'))
