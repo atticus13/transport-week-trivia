@@ -214,7 +214,7 @@ input:focus{border-color:var(--c);outline:none}
 .tbl-wrap input::placeholder{color:#3e4968}
 .rowdel{padding:2px 8px;background:transparent;border:0;color:var(--muted);font-size:1.1rem;border-radius:6px}
 .rowdel:hover{color:#ff8a5c}
-.tbl-actions{display:flex;gap:10px;margin:10px 0 4px}
+.tbl-actions{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 4px}
 .tbl-actions button{flex:1;padding:10px;font-size:.85rem}
 .plist{display:grid;gap:8px;margin:0 0 14px}
 .prow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:12px}
@@ -300,16 +300,52 @@ var FIREBASE_CONFIG={
 /* ================================================================================ */
 var MAXP=60, ID_RE=/^[a-z][a-z0-9]{3,7}$/, LETTERS=['A','B','C','D'];
 var DEFAULT_BANK=[
-  {q:"Gatorade was invented in 1965 at which university?",a:"University of Florida",w:["Ohio State","Florida State","Georgia Tech"]},
-  {q:"In a medical order, what does STAT mean?",a:"Immediately",w:["Within 24 hours","As needed","Once daily"]},
-  {q:"How many bones does an adult human body have?",a:"206",w:["106","306","412"]},
-  {q:"Which Gator won the Heisman Trophy in 2007?",a:"Tim Tebow",w:["Chris Leak","Danny Wuerffel","Steve Spurrier"]},
-  {q:"What is the largest organ of the human body?",a:"Skin",w:["Liver","Lungs","Small intestine"]},
-  {q:"How many hearts does an octopus have?",a:"Three",w:["Two","Four","One"]},
-  {q:"What is a normal resting heart rate for most adults?",a:"60–100 bpm",w:["30–50 bpm","110–140 bpm","150–180 bpm"]},
-  {q:"What is the capital of Australia?",a:"Canberra",w:["Sydney","Melbourne","Perth"]},
-  {q:"Which blood type is the universal donor for red blood cells?",a:"O negative",w:["AB positive","A negative","B positive"]},
-  {q:"What is the University of Florida football stadium famously nicknamed?",a:"The Swamp",w:["The Bog","The Gator Pit","The Orange Bowl"]}
+  {"q":"What year did Shands first open?","a":"1958","w":["1948","1965","1972"]},
+  {"q":"What was Shands called before it was Shands?","a":"UF Teaching Hospital","w":["Alachua County Medical Center","Gainesville General Hospital","J. Hillis Miller Hospital"]},
+  {"q":"When did South Tower open?","a":"2009","w":["2005","2012","2015"]},
+  {"q":"When did East Tower open?","a":"2017","w":["2014","2019","2021"]},
+  {"q":"What is the name of the patio between south tower and east tower?","a":"Fackler Terrace","w":["Criser Courtyard","Magnolia Terrace","Founders Patio"]},
+  {"q":"How many licensed hospital beds do we have in the hospital?","a":"1145","w":["865","1030","1250"]},
+  {"q":"How long is the dry time for purple wipes?","a":"2 minutes","w":["1 minute","3 minutes","4 minutes"]},
+  {"q":"How long is the dry time for bleach wipes?","a":"4 minutes","w":["3 minutes","2 minutes","1 minute"]},
+  {"q":"What color are the metal oxygen tank cabinets?","a":"Yellow","w":["Green","Red","Blue"]},
+  {"q":"On wednesdays we wear:","a":"Pink","w":["Yellow","Purple","Blue"]},
+  {"q":"At or above what weight must a deceased patient be taken to the South Morgue?","a":"350lbs","w":["250lbs","400lbs","500lbs"]},
+  {"q":"When a patient's room needs cleaning, how long does Transport wait with the patient for EVS?","a":"We don't wait with the patient.","w":["5 minutes","10 minutes","Until the room is ready."]},
+  {"q":"If a patient is able to walk, how should Transport take them to their appointment?","a":"By wheelchair or stretcher — never on foot","w":["On foot, walking alongside them","On foot, if they feel up to it","On foot, with a family member"]},
+  {"q":"The maximum weight capacity of our heavy Hoyer lift is","a":"1000lbs","w":["750lbs","1200lbs","1500lbs"]},
+  {"q":"What Union is the Transport department part of?","a":"AFSCME","w":["Hospital Laborers 101","ACME","UFPT-2319"]},
+  {"q":"What are the options you have in the event of an active shooter?","a":"Run, Hide, Fight","w":["Live, Laugh, Love","Fight, Fight, Fight","Holy Hand Grenade"]},
+  {"q":"During which period are people with flu generally most contagious?","a":"The first 3 days of illness","w":["Only after symptoms end","The last day of illness only","Two weeks after recovery"]},
+  {"q":"What emergency is indicated by a Code Blue?","a":"Cardiac or respiratory arrest","w":["Missing child alert","Hazardous material spill","Fire in the building"]},
+  {"q":"What is the primary role of the SWAT Team in a hospital emergency?","a":"Manage complex medical emergencies","w":["Provide hospital security escorts","Perform patient transport rounds","Inspect medical equipment"]},
+  {"q":"What is the purpose of the precaution signs posted outside patient rooms?","a":"To tell staff what PPE and precautions are required","w":["To display daily cleaning schedules","To identify physician assignments","To show patient meal selections"]},
+  {"q":"Which isolation category is used for diseases such as tuberculosis or measles?","a":"Airborne precautions","w":["Contact precautions","Enhanced contact precautions","Standard precautions only"]},
+  {"q":"How long should hands be rubbed together when washing with soap and water?","a":"At least 20 seconds","w":["5 seconds","10 seconds","60 seconds minimum"]},
+  {"q":"What should be done immediately before leaving a patient's isolation room?","a":"Remove PPE","w":["Turn off room lights","Close patient charts","Call housekeeping"]},
+  {"q":"When transporting a patient with oxygen, how should the tank be stored?","a":"Upright and secured","w":["Laid on its side","Hanging from the stretcher rail","Balanced on equipment shelves"]},
+  {"q":"When calling in a Code Pink for a missing infant or child, what information should you provide?","a":"Description and last known location","w":["Medical record number only","Parent's phone number only","Insurance information"]},
+  {"q":"Under the hospital's emergency staffing plan, what are Team A employees expected to do during an emergency event?","a":"Remain at work during the disaster","w":["Wait at home for instructions","Report only after the storm","Work remotely"]},
+  {"q":"Under the hospital's emergency staffing plan, when are Team B employees expected to report to work?","a":"After the \"All Clear\" is issued","w":["Before Team A arrives","Only if their manager calls twice","One week after the event"]},
+  {"q":"When reporting for duty during an emergency event, employees should pack personal items for approximately how long?","a":"48-72 hours","w":["12 hours","24 hours","One week"]},
+  {"q":"When should the SWAT team be called for a patient?","a":"When a patient is declining but has not coded","w":["Only after a Code Blue is called","Any time a unit is short staffed","When equipment needs to be repaired"]},
+  {"q":"What is the primary purpose of a Code Blue team?","a":"Begin CPR and resuscitation efforts","w":["Manage patient admissions","Coordinate staffing","Investigate incidents"]},
+  {"q":"During which activity should gloves NOT be worn?","a":"Routine patient transfer","w":["Exposure to blood","Equipment cleaning","Contact with body fluids"]},
+  {"q":"While wearing an N95 respirator, what part should you avoid touching?","a":"The front surface","w":["The straps","The packaging","The nosepiece"]},
+  {"q":"What does PASS stand for when using a fire extinguisher?","a":"Pull, Aim, Squeeze, Sweep","w":["Point, Activate, Spray, Stop","Pull, Alarm, Spray, Secure","Press, Aim, Shake, Spray"]},
+  {"q":"What two identifiers should you verify before transporting a patient?","a":"Name and date of birth","w":["Room number and diagnosis","Insurance and address","Nurse's name and unit"]},
+  {"q":"What should you check first on a wheelchair before loading a patient?","a":"The brakes","w":["The seat cushion","The armrests","The footplate color"]},
+  {"q":"If a patient falls during transport, what is your first step?","a":"Stay with the patient and call for help","w":["Lift them back into the chair yourself","Finish the transport first","Leave to find the nurse"]},
+  {"q":"Which organization accredits the hospital and does the surveys we prepare for?","a":"The Joint Commission","w":["The CDC","OSHA","The AMA"]},
+  {"q":"The hospital's first patient was a 9-year-old girl from which Florida town?","a":"Williston","w":["Ocala","Starke","High Springs"]},
+  {"q":"In what year did UF's colleges of Medicine and Nursing open?","a":"1956","w":["1948","1958","1962"]},
+  {"q":"What medical first did UF surgeons perform here in 1959?","a":"Florida's first open-heart surgery","w":["The world's first heart transplant","Florida's first MRI scan","The nation's first hip replacement"]},
+  {"q":"How many bones are in the adult human body?","a":"206","w":["186","231","256"]},
+  {"q":"What is the most common blood type in the U.S.?","a":"O positive","w":["AB negative","B positive","A negative"]},
+  {"q":"Which organ produces insulin?","a":"The pancreas","w":["The liver","The spleen","The gallbladder"]},
+  {"q":"What is the medical name for the kneecap?","a":"Patella","w":["Tibia","Fibula","Sternum"]},
+  {"q":"What does CPR stand for?","a":"Cardiopulmonary resuscitation","w":["Cardiac pulse recovery","Chest pressure response","Critical patient rescue"]},
+  {"q":"About how long does a red blood cell live?","a":"About 120 days","w":["About 7 days","About 1 year","About 30 days"]}
 ];
 
 /*pure:start*/
@@ -1245,7 +1281,8 @@ function viewQuestions(){
     h('div',{class:'tbl-wrap'},h('table',null,h('thead',null,h('tr',null,ph.map(function(p){return h('th',null,p);}),h('th'))),tbody)),
     h('div',{class:'tbl-actions'},
       h('button',{class:'btn-sec',type:'button',on:{click:function(){var tr=addRow();tr.querySelector('input').focus();tr.scrollIntoView({block:'nearest'});}}},'+ Add row'),
-      h('button',{class:'btn-sec',type:'button',on:{click:function(){setTable([]);msg.textContent='';tbody.querySelector('input').focus();}}},'Clear table')),
+      h('button',{class:'btn-sec',type:'button',on:{click:function(){setTable([]);msg.textContent='';tbody.querySelector('input').focus();}}},'Clear table'),
+      h('button',{class:'btn-sec',type:'button',on:{click:function(){setTable(DEFAULT_BANK.map(function(r){return [r.q,r.a].concat(r.w);}));msg.style.color='';msg.textContent='Default questions loaded ('+DEFAULT_BANK.length+'). Press Save to use them.';}}},'Restore default questions')),
     h('div',{class:'field',style:'margin-top:12px'},h('label',{class:'lbl',for:'cnt'},'Questions per game'),countInp,
       h('p',{class:'opt-hint'},'Each game picks this many at random from the list.')),
     msg,
