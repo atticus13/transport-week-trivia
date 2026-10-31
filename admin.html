@@ -67,7 +67,7 @@ var HH='1hg4rirz0r6k2',AH='eelyiy1bbww01';
 function el(tag,attrs){var e=document.createElement(tag);if(attrs)Object.keys(attrs).forEach(function(k){if(k==='on'){Object.keys(attrs.on).forEach(function(ev){e.addEventListener(ev,attrs.on[ev]);});}else if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k]);});
   [].slice.call(arguments,2).forEach(function(c){if(c==null)return;(Array.isArray(c)?c:[c]).forEach(function(x){e.append(x.nodeType?x:document.createTextNode(String(x)));});});return e;}
 var root=document.getElementById('root');
-var BOARDS=[['trivia','Trivia best'],['total','Trivia total'],['arcade','Wheelchair'],['stack','Game timer']];
+var BOARDS=[['trivia','Trivia best'],['total','Trivia total'],['arcade','Wheelchair'],['stack','Stretcher Prep']];
 var tab='trivia',data={},db=null,off=null;
 function fmtN(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function fmtT(ms){var s=ms/1000;if(s<60)return s.toFixed(2)+'s';var m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(2).padStart(5,'0');}
@@ -95,7 +95,7 @@ function menu(){
     el('div',{class:'tiles'},
       el('a',{class:'tile',href:'trivia.html'},el('b',null,'Trivia'),el('span',null,'Run a game. The big screen shows the QR code.')),
       el('a',{class:'tile',href:'bingo.html'},el('b',null,'Bingo'),el('span',null,'The word drawer.')),
-      el('a',{class:'tile',href:'timer.html?host=1'},el('b',null,'Game Timer'),el('span',null,'Open or close the timer, delete runs, and edit its leaderboard.'))),
+      el('a',{class:'tile',href:'timer.html?host=1'},el('b',null,'Stretcher Prep Time Trials'),el('span',null,'Open or close it, delete runs, and edit its leaderboard.'))),
     el('h2',null,'Show or hide leaderboards'),el('div',{id:'hidebox'}),
     el('h2',null,'Edit leaderboards'),el('div',{id:'mgr'}),
     el('p',{style:'text-align:center;margin:22px 0 0'},el('a',{class:'link',href:'index.html'},'Player home'),' ',

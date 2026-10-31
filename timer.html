@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Game Timer</title>
+<title>Stretcher Prep Time Trials</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -66,10 +66,10 @@ html.hostview #pad,html.hostview #best,html.hostview #again{display:none!importa
 <div class="wrap">
   <div class="top"><a id="backLink" href="index.html">&larr; Home</a><span id="who"></span></div>
   <div class="card">
-    <h1>Game Timer</h1>
+    <h1>Stretcher Prep Time Trials</h1>
     <p class="sub">Hold, let go, stop</p>
     <div id="hostPanel" class="hostp" hidden></div>
-    <div id="pad" class="pad" role="button" tabindex="0" aria-label="Timer pad"></div>
+    <div id="pad" class="pad" role="button" tabindex="0" aria-label="Time trial pad"></div>
     <p class="best" id="best"></p>
     <div id="again" class="again" hidden><button class="btn-main cool" id="againBtn" type="button"><span class="bar"></span><span class="lab">Go again</span></button></div>
     <h2>Fastest times</h2>
@@ -123,7 +123,7 @@ function armBtn(b,label,armed,fn){var t=0;b.addEventListener('click',function(){
   if(b.dataset.a==='1'){clearTimeout(t);b.dataset.a='';fn();return;}
   b.dataset.a='1';b.textContent=armed;b.classList.add('armed');
   t=setTimeout(function(){b.dataset.a='';b.textContent=label;b.classList.remove('armed');},3000);});}
-function gate(){return open?{ok:true}:{ok:false,msg:'The timer is closed. Wait for the host to open it.'};}
+function gate(){return open?{ok:true}:{ok:false,msg:'The time trials are closed. Wait for the host to open them.'};}
 function gateUpdate(){if(state==='idle'||state==='locked')idle();}
 
 /* ---------- host controls: open or close, and delete a run ---------- */
@@ -144,9 +144,9 @@ function hostDraw(){
   var p=$('hostPanel');if(!HOSTVIEW){p.hidden=true;return;}
   p.hidden=false;p.textContent='';
   var b=document.createElement('b');b.textContent='Host controls';p.appendChild(b);
-  var st=document.createElement('p');st.style.margin='8px 0 0';st.textContent=open?'Timer is OPEN. Players can run it as many times as they like.':'Timer is CLOSED. Players cannot use it.';p.appendChild(st);
+  var st=document.createElement('p');st.style.margin='8px 0 0';st.textContent=open?'Time trials are OPEN. Players can run them as many times as they like.':'Time trials are CLOSED. Players cannot use them.';p.appendChild(st);
   var bt=document.createElement('div');bt.className='btns';
-  var tog=document.createElement('button');tog.type='button';tog.className='btn-sec';tog.textContent=open?'Close timer':'Open timer';
+  var tog=document.createElement('button');tog.type='button';tog.className='btn-sec';tog.textContent=open?'Close time trials':'Open time trials';
   tog.addEventListener('click',function(){tref.set({open:!open});});
   bt.appendChild(tog);p.appendChild(bt);
   var list=allRuns().slice(0,3);

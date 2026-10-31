@@ -80,8 +80,8 @@ function login(){
 }
 function hostLink(){return el('a',{class:'tile',href:'host.html',style:'margin-bottom:16px;padding:14px;text-align:center;border-style:dashed'},el('b',{style:'font-size:20px;margin:0'},'Hosting an event?'),el('span',null,'Open the host tools (passcode needed)'));}
 var LBD={tab:'trivia',data:{},hidden:false,db:null,started:false};
-var LBB=[['trivia','Trivia best'],['total','Trivia total'],['arcade','Wheelchair'],['stack','Game timer']];
-var LBN={trivia:'Highest score in a single trivia game.',total:'All trivia points added up.',arcade:'Best Wheelchair Run score.',stack:'Fastest game timer time.'};
+var LBB=[['trivia','Trivia best'],['total','Trivia total'],['arcade','Wheelchair'],['stack','Stretcher Prep']];
+var LBN={trivia:'Highest score in a single trivia game.',total:'All trivia points added up.',arcade:'Best Wheelchair Run score.',stack:'Fastest Stretcher Prep Time Trials time.'};
 function lbKey(n){return String(n||'').toLowerCase().replace(/[.$#\[\]\/\s]+/g,'_').slice(0,32)||'_';}
 function fmtN(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function fmtT(ms){var s=ms/1000;if(s<60)return s.toFixed(2)+'s';var m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(2).padStart(5,'0');}
@@ -114,7 +114,7 @@ function home(){
     el('a',{class:'tile',href:'schedule.html'},el('b',null,'Schedule'),el('span',null,'Lunch, games and prizes for every day of the week.')),
     el('a',{class:'tile',href:'trivia.html?r=TWEEK'},el('b',null,'Trivia'),el('span',null,'Join the live game. Answer fast for bonus points.')),
     el('a',{class:'tile',href:'wheelchair.html'},el('b',null,'Wheelchair Run'),el('span',null,'Jump the hospital obstacles. Beat the best score.')),
-    el('a',{class:'tile',href:'timer.html'},el('b',null,'Game Timer'),el('span',null,'Hold, let go to start, touch to stop. Fastest time wins when the host opens it.'))
+    el('a',{class:'tile',href:'timer.html'},el('b',null,'Stretcher Prep Time Trials'),el('span',null,'Hold, let go to start, touch to stop. Fastest time wins when the host opens it.'))
   ];
   var out=el('button',{class:'link',type:'button',on:{click:function(){sset('brt.user','');sset('brt.name','');sset('brt.joined','0');render();}}},'Not you? Log out');
   root.replaceChildren(el('h1',null,'Transport Week'),el('p',{class:'sub'},'Games'),
