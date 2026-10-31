@@ -247,6 +247,7 @@ input:focus{border-color:var(--c);outline:none}
 .lb-note{margin:12px 0 0;font-size:.78rem;color:var(--muted)}
 .arc-row{display:flex;gap:10px;margin-top:10px}
 .arc-row .arc-j{flex:1;width:auto;margin:0;padding:18px 14px;touch-action:none}
+.arc-snd{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.8rem;padding:6px;margin-top:2px}
 .arc-s{margin-top:7px;font-size:.78rem;color:var(--muted)}
 #fx{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:90}
 .hostback{position:fixed;left:12px;top:10px;z-index:30;font-size:.8rem;color:var(--muted);text-decoration:none;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--card)}
@@ -668,6 +669,19 @@ var ARC_BG=[
   ['   _[+]_  ','  |_ _ _| ','  |HOSPITAL|','  |_|__|__|']
 ];
 var ARC_CUP=[' ) ','[_]'];
+/* ---------- sound effects: tiny synth beeps, no audio files ---------- */
+var SND={ctx:null,on:sget('brt.snd')!=='0'};
+function sndCtx(){try{if(!SND.ctx){var C=window.AudioContext||window.webkitAudioContext;if(C)SND.ctx=new C();}if(SND.ctx&&SND.ctx.state==='suspended')SND.ctx.resume();}catch(e){}return SND.ctx;}
+function tone(f0,f1,dur,type,vol,delay){
+  try{var c=SND.on&&sndCtx();if(!c)return;
+    var t=c.currentTime+(delay||0),o=c.createOscillator(),g=c.createGain();
+    o.type=type||'square';o.frequency.setValueAtTime(f0,t);if(f1&&f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(vol||0.04,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dur+0.03);}catch(e){}
+}
+function sndJump(){tone(300,640,0.12,'square',0.035);}
+function sndCup(){tone(880,880,0.07,'square',0.035);tone(1320,1320,0.14,'square',0.035,0.07);}
+function sndCrash(){tone(240,50,0.38,'sawtooth',0.06);tone(120,40,0.3,'square',0.04,0.05);}
 var ARC={el:null,cv:null,cx:null,G:arcNew(null,false),running:false,raf:0,last:0,hi:0};
 function arcDraw(){
   var cx=ARC.cx,G=ARC.G;if(!cx)return;
@@ -731,14 +745,17 @@ function arcLoop(now){
   if(!ARC.el||!ARC.el.isConnected||ARC.el.offsetParent===null){ARC.running=false;ARC.raf=0;return;}
   var dt=Math.min(0.05,(now-ARC.last)/1000||0.016);ARC.last=now;
   var wasOver=ARC.G.over;
+  var got0=ARC.G.got;
   arcStep(ARC.G,dt,Math.random);
-  if(!wasOver&&ARC.G.over){var sc=arcScore(ARC.G);if(sc>ARC.hi)ARC.hi=sc;ARC.overAt=now;var who=arcWho();if(who)lbPut('arcade',who,sc);}
+  if(ARC.G.got>got0)sndCup();
+  if(!wasOver&&ARC.G.over){sndCrash();var sc=arcScore(ARC.G);if(sc>ARC.hi)ARC.hi=sc;ARC.overAt=now;var who=arcWho();if(who)lbPut('arcade',who,sc);}
   arcDraw();
   ARC.raf=requestAnimationFrame(arcLoop);
 }
 function arcPress(){
   var G=ARC.G;
-  if(G.over){if(performance.now()-(ARC.overAt||0)>350){ARC.G=arcNew(null,arcFar());arcJump(ARC.G);}return;}
+  if(G.over){if(performance.now()-(ARC.overAt||0)>350){ARC.G=arcNew(null,arcFar());arcJump(ARC.G);sndJump();}return;}
+  if(G.y<=0.5)sndJump();
   arcJump(G);
 }
 function arcUp(){arcRelease(ARC.G);}
@@ -758,9 +775,13 @@ function arcade(){
     ARC.cx=ARC.cv.getContext('2d');if(ARC.cx)ARC.cx.setTransform(dpr,0,0,dpr,0,0);
     var jb=h('button',{class:'btn-main arc-j',type:'button'},'JUMP');
     arcHold(jb,arcPress,arcUp);
-    ARC.jb=jb;
+    var sb=h('button',{class:'arc-snd',type:'button'},'');
+    function sndLabel(){sb.textContent='Sound: '+(SND.on?'on':'off');}
+    sndLabel();
+    sb.addEventListener('click',function(){SND.on=!SND.on;sset('brt.snd',SND.on?'1':'0');sndLabel();if(SND.on)sndJump();});
+    ARC.sb=sb;ARC.jb=jb;
     ARC.el=h('div',{class:'arcade'},h('div',{class:'arc-t'},'Play this while you wait'),ARC.cv,h('div',{class:'arc-row'},jb),
-      h('div',{class:'arc-s'},'Tap to hop, hold to jump high. Clear the doctor huddle! Grab coffee for bonus points.'));
+      h('div',{class:'arc-s'},'Tap to hop, hold to jump high. Clear the doctor huddle! Grab coffee for bonus points.',h('div',null,sb)));
     function active(e){if(!ARC.el.isConnected||ARC.el.offsetParent===null)return false;var t=e.target&&e.target.tagName;return !(t==='INPUT'||t==='TEXTAREA'||(t==='BUTTON'&&e.target!==ARC.jb));}
     document.addEventListener('keydown',function(e){
       if(!active(e)||e.repeat)return;
